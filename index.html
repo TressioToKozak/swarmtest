@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="style.css?v=6" />
   </head>
   <body>
     <main id="game-shell">
@@ -59,13 +59,13 @@
           <h1>SWARM<em>FALL</em></h1>
           <p>Pokonuj kolejne fale, zbieraj doświadczenie i rozwijaj postać.</p>
           <div class="menu-actions">
-            <button id="startBtn">NOWA GRA <span>→</span></button>
-            <button id="continueBtn" class="continue-btn hidden">KONTYNUUJ <span>▶</span></button>
-            <button id="instructionsBtn" class="secondary-btn">JAK GRAĆ <span>?</span></button>
-            <button id="statsBtn" class="secondary-btn">STATYSTYKI <span>▥</span></button>
-            <button id="charactersBtn" class="secondary-btn">POSTACIE <span>♙</span></button>
-            <button id="mapsBtn" class="secondary-btn">MAPY <span>⌁</span></button>
-            <button class="secondary-btn locked-btn" disabled>MULTIPLAYER <span>🔒</span></button>
+            <button type="button" id="continueBtn" class="continue-btn hidden"><span class="menu-icon icon-continue"></span><b>KONTYNUUJ</b></button>
+            <button type="button" id="startBtn"><span class="menu-icon icon-new"></span><b>NOWA GRA</b></button>
+            <button type="button" id="charactersBtn" class="secondary-btn"><span class="menu-icon icon-character"></span><b>POSTACIE</b></button>
+            <button type="button" id="mapsBtn" class="secondary-btn"><span class="menu-icon icon-map"></span><b>MAPY</b></button>
+            <button type="button" id="instructionsBtn" class="secondary-btn"><span class="menu-icon icon-help"></span><b>JAK GRAĆ</b></button>
+            <button type="button" id="statsBtn" class="secondary-btn"><span class="menu-icon icon-stats"></span><b>STATYSTYKI</b></button>
+            <button type="button" class="secondary-btn locked-btn wide-button" disabled><span class="menu-icon icon-lock"></span><b>MULTIPLAYER</b><small>WKRÓTCE</small></button>
           </div>
         </div>
       </section>
@@ -74,7 +74,7 @@
         <div class="selection-panel">
           <div class="eyebrow">POSTACIE</div><h2>WYBIERZ <em>POSTAĆ</em></h2>
           <div class="selection-list"><article class="selection-card selected"><div class="character-preview"><i></i></div><small>DOSTĘPNA</small><h3>Zwiadowca</h3><p>Szybka postać korzystająca z automatycznego działka i umiejętności obszarowych.</p><b>WYBRANO ✓</b></article></div>
-          <button id="charactersBackBtn" class="secondary-btn">← WRÓĆ DO MENU</button>
+          <button type="button" id="charactersBackBtn" class="secondary-btn">← WRÓĆ DO MENU</button>
         </div>
       </section>
 
@@ -82,7 +82,7 @@
         <div class="selection-panel">
           <div class="eyebrow">MAPY</div><h2>WYBIERZ <em>MAPĘ</em></h2>
           <div class="selection-list"><article class="selection-card selected"><div class="map-preview"><i></i><i></i><i></i></div><small>DOSTĘPNA</small><h3>Zalane ruiny</h3><p>Średniej wielkości teren ze skałami, zbiornikami wody i pozostałościami murów.</p><b>WYBRANO ✓</b></article></div>
-          <button id="mapsBackBtn" class="secondary-btn">← WRÓĆ DO MENU</button>
+          <button type="button" id="mapsBackBtn" class="secondary-btn">← WRÓĆ DO MENU</button>
         </div>
       </section>
 
@@ -136,6 +136,6 @@
         <p id="endStats"></p><button id="restartBtn">SPRÓBUJ PONOWNIE <span>↻</span></button>
       </section>
     </main>
-    <script src="game.js"></script>
+    <script src="game.js?v=6"></script>
   </body>
 </html>
