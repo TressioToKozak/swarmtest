@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#070914" />
-    <title>VOID//SWARM</title>
+    <title>Swarmfall — gra survivalowa</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
@@ -12,11 +12,11 @@
   </head>
   <body>
     <main id="game-shell">
-      <canvas id="game" aria-label="Pole bitwy gry VOID SWARM"></canvas>
+      <canvas id="game" aria-label="Pole gry Swarmfall"></canvas>
 
       <header class="topbar">
-        <div class="brand"><span class="brand-mark">V</span><span>VOID<small>//</small>SWARM</span></div>
-        <div class="timer-block"><span>STREFA 01</span><strong id="timer">00:00</strong></div>
+        <div class="brand"><span class="brand-mark"><i></i></span><span>SWARMFALL<small> SURVIVAL</small></span></div>
+        <div class="timer-block"><span>CZAS GRY</span><strong id="timer">00:00</strong></div>
         <div class="stats"><span>ELIMINACJE <b id="kills">0</b></span><span>POZIOM <b id="level">1</b></span></div>
       </header>
 
@@ -26,7 +26,7 @@
       </section>
 
       <aside class="minimap-wrap" aria-label="Minimapa obszaru">
-        <div class="minimap-heading"><span>SKAN OBSZARU</span><b>SEKTOR 7-G</b></div>
+        <div class="minimap-heading"><span>MINIMAPA</span><b>POZYCJA</b></div>
         <canvas id="minimap" width="220" height="150"></canvas>
         <div class="minimap-coords" id="coordinates">X 0000 · Y 0000</div>
       </aside>
@@ -37,9 +37,9 @@
       </section>
 
       <section class="abilities" aria-label="Umiejętności">
-        <div class="ability" data-key="Q"><canvas width="72" height="72"></canvas><kbd>Q</kbd><span class="cd"></span><small>CIĘCIE</small></div>
-        <div class="ability" data-key="E"><canvas width="72" height="72"></canvas><kbd>E</kbd><span class="cd"></span><small>IMPULS</small></div>
-        <div class="ability ultimate" data-key="R"><canvas width="72" height="72"></canvas><kbd>R</kbd><span class="cd"></span><small>SUPERNOWA</small></div>
+        <div class="ability" data-key="Q"><canvas width="72" height="72"></canvas><kbd>Q</kbd><span class="cd"></span><small>SALWA</small></div>
+        <div class="ability" data-key="E"><canvas width="72" height="72"></canvas><kbd>E</kbd><span class="cd"></span><small>ODRZUT</small></div>
+        <div class="ability ultimate" data-key="R"><canvas width="72" height="72"></canvas><kbd>R</kbd><span class="cd"></span><small>WYBUCH</small></div>
       </section>
 
       <section class="xp-wrap">
@@ -51,21 +51,21 @@
 
       <section class="modal start-modal" id="startModal">
         <div class="menu-frame">
-          <div class="menu-sigil"><i></i><b>V</b><i></i></div>
-          <div class="eyebrow">OPERACJA // SEKTOR 7-G</div>
-          <h1>VOID<small>//</small><em>SWARM</em></h1>
-          <p>Wejdź do strefy. Ewoluuj. Przetrwaj rój.</p>
+          <div class="menu-sigil"><i></i><b>S</b><i></i></div>
+          <h1>SWARM<em>FALL</em></h1>
+          <p>Pokonuj kolejne fale, zbieraj doświadczenie i rozwijaj postać.</p>
           <div class="menu-actions">
-            <button id="startBtn">ROZPOCZNIJ MISJĘ <span>→</span></button>
+            <button id="startBtn">NOWA GRA <span>→</span></button>
             <button id="instructionsBtn" class="secondary-btn">JAK GRAĆ <span>?</span></button>
+            <button class="secondary-btn locked-btn" disabled>POSTACIE <span>🔒</span></button>
+            <button class="secondary-btn locked-btn" disabled>MULTIPLAYER <span>🔒</span></button>
           </div>
-          <small>PROTOKÓŁ GOTOWY · POŁĄCZENIE STABILNE</small>
         </div>
       </section>
 
       <section class="modal instructions-modal hidden" id="instructionsModal">
         <div class="instruction-panel">
-          <div class="eyebrow">BAZA WIEDZY // 01</div>
+          <div class="eyebrow">INSTRUKCJA</div>
           <h2>JAK <em>GRAĆ</em></h2>
           <div class="instruction-grid">
             <article><div class="key-art"><kbd>W</kbd><span><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span></div><div><b>RUCH</b><p>Poruszaj się po strefie i omijaj wodę, skały oraz mury.</p></div></article>
@@ -78,14 +78,14 @@
       </section>
 
       <section class="modal level-modal hidden" id="levelModal">
-        <div class="eyebrow">AWANS • POZIOM <span id="newLevel">2</span></div>
+          <div class="eyebrow">NOWY POZIOM <span id="newLevel">2</span></div>
         <h2>WYBIERZ <em>ULEPSZENIE</em></h2>
         <p>Wybierz jedną kartę. Możesz posiadać maksymalnie 5 różnych ulepszeń.</p>
         <div class="cards" id="cards"></div>
       </section>
 
       <section class="modal end-modal hidden" id="endModal">
-        <div class="eyebrow">SYGNAŁ UTRACONY</div><h2>KONIEC <em>MISJI</em></h2>
+        <div class="eyebrow">KONIEC GRY</div><h2>SPRÓBUJ <em>PONOWNIE</em></h2>
         <p id="endStats"></p><button id="restartBtn">SPRÓBUJ PONOWNIE <span>↻</span></button>
       </section>
     </main>

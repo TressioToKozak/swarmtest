@@ -27,8 +27,16 @@ function blocked(x,y,r=14){
   return terrain.some(t=>t.type==='water'?circleTouchesPolygon(x,y,r,t.points,true):t.type==='wall'?x+r>t.x&&x-r<t.x+t.w&&y+r>t.y&&y-r<t.y+t.h:Math.hypot(x-t.x,y-t.y)<r+t.r);
 }
 function projectileBlocked(x,y){return terrain.some(t=>t.type==='wall'?x>t.x&&x<t.x+t.w&&y>t.y&&y<t.y+t.h:t.type==='rock'&&Math.hypot(x-t.x,y-t.y)<t.r)}
+function hasClearPath(from,to,r){
+  const length=dist(from,to),steps=Math.ceil(length/24);for(let i=1;i<=steps;i++){const t=i/steps;if(blocked(from.x+(to.x-from.x)*t,from.y+(to.y-from.y)*t,r))return false}return true;
+}
 function moveEnemy(e,angle,distance){
-  for(const offset of [0,.45,-.45,.9,-.9,1.35,-1.35]){const nx=e.x+Math.cos(angle+offset)*distance,ny=e.y+Math.sin(angle+offset)*distance;if(!blocked(nx,ny,e.r)){e.x=nx;e.y=ny;return}}
+  const directX=e.x+Math.cos(angle)*distance,directY=e.y+Math.sin(angle)*distance;
+  if(!e.navSide&&!blocked(directX,directY,e.r)){e.x=directX;e.y=directY;return}
+  if(e.navSide){e.navCheck=(e.navCheck||0)-1;if(e.navCheck<=0){e.navCheck=12;if(hasClearPath(e,player,e.r)){e.navSide=0;e.x=directX;e.y=directY;return}}}
+  if(!e.navSide){const leftOk=!blocked(e.x+Math.cos(angle+Math.PI/2)*distance*3,e.y+Math.sin(angle+Math.PI/2)*distance*3,e.r);const rightOk=!blocked(e.x+Math.cos(angle-Math.PI/2)*distance*3,e.y+Math.sin(angle-Math.PI/2)*distance*3,e.r);e.navSide=leftOk&&!rightOk?1:rightOk&&!leftOk?-1:(Math.random()<.5?1:-1);e.navCheck=12}
+  const tangent=angle+e.navSide*Math.PI/2;for(const offset of [0,-e.navSide*.25,e.navSide*.25,-e.navSide*.55,e.navSide*.55,Math.PI]){const nx=e.x+Math.cos(tangent+offset)*distance,ny=e.y+Math.sin(tangent+offset)*distance;if(!blocked(nx,ny,e.r)){e.x=nx;e.y=ny;return}}
+  e.navSide*=-1;
 }
 
 const scenery = Array.from({length: 145}, (_, i) => {
@@ -43,13 +51,13 @@ const player={x:WORLD.w/2,y:WORLD.h/2,r:15,speed:250,hp:100,maxHp:100,xp:0,level
 let enemies=[],bullets=[],orbs=[],particles=[],rings=[];
 const skills={q:{cd:0,max:5},e:{cd:0,max:9},r:{cd:0,max:28}};
 const upgrades=[
-  {id:'power',name:'Nadprzewodnik',icon:'ϟ',desc:'+25% obrażeń pocisków',color:'#51f6df'},
-  {id:'rapid',name:'Nadpisanie',icon:'»',desc:'+18% szybkości ataku',color:'#4cc8ff'},
-  {id:'speed',name:'Faza kinetyczna',icon:'◇',desc:'+12% prędkości ruchu',color:'#a06cff'},
-  {id:'vital',name:'Rdzeń życia',icon:'♥',desc:'+20 maks. życia i leczenie',color:'#ff6688'},
-  {id:'multi',name:'Rozszczepienie',icon:'Ψ',desc:'+1 dodatkowy pocisk',color:'#ffd467'},
-  {id:'magnet',name:'Polaryzacja',icon:'⊙',desc:'+45% zasięgu zbierania',color:'#6df59d'},
-  {id:'crit',name:'Pęknięcie',icon:'✦',desc:'+10% szansy na cios krytyczny',color:'#ff9657'}
+  {id:'power',name:'Większe obrażenia',icon:'ϟ',desc:'+25% obrażeń pocisków',color:'#51f6df'},
+  {id:'rapid',name:'Szybszy atak',icon:'»',desc:'+18% szybkości ataku',color:'#4cc8ff'},
+  {id:'speed',name:'Szybszy ruch',icon:'◇',desc:'+12% prędkości ruchu',color:'#a06cff'},
+  {id:'vital',name:'Więcej zdrowia',icon:'♥',desc:'+20 maks. życia i leczenie',color:'#ff6688'},
+  {id:'multi',name:'Dodatkowy pocisk',icon:'Ψ',desc:'+1 dodatkowy pocisk',color:'#ffd467'},
+  {id:'magnet',name:'Magnes doświadczenia',icon:'⊙',desc:'+45% zasięgu zbierania',color:'#6df59d'},
+  {id:'crit',name:'Trafienie krytyczne',icon:'✦',desc:'+10% szansy na cios krytyczny',color:'#ff9657'}
 ];
 const levels={};
 function resize(){dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;canvas.width=W*dpr;canvas.height=H*dpr;canvas.style.width=W+'px';canvas.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0)}
@@ -71,7 +79,7 @@ function update(dt){elapsed+=dt;player.invuln=Math.max(0,player.invuln-dt);Objec
   const magnet=105*Math.pow(1.45,levels.magnet||0);orbs.forEach(o=>{const d=dist(o,player);if(d<magnet){const a=Math.atan2(player.y-o.y,player.x-o.x),v=200+(magnet-d)*4;o.x+=Math.cos(a)*v*dt;o.y+=Math.sin(a)*v*dt}if(d<player.r+10){o.dead=true;gainXp(o.value)}});orbs=orbs.filter(o=>!o.dead);
   particles.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.95;p.vy*=.95;p.life-=dt});particles=particles.filter(p=>p.life>0);rings.forEach(r=>{r.r+=(r.max-r.r)*9*dt;r.life-=dt});rings=rings.filter(r=>r.life>0);bullets=bullets.filter(b=>b.life>0);screenShake*=.87;if(player.hp<=0)gameOver();updateUI()}
 function gainXp(n){player.xp+=n;burst(player.x,player.y,'#51f6df',3);if(player.xp>=player.nextXp){player.xp-=player.nextXp;player.level++;player.nextXp=Math.floor(player.nextXp*1.34);showLevelUp()}}
-function showLevelUp(){paused=true;ui.newLevel.textContent=player.level;ui.levelModal.classList.remove('hidden');const owned=Object.keys(levels),available=upgrades.filter(u=>owned.length<5||levels[u.id]);const picks=[...available].sort(()=>Math.random()-.5).slice(0,3);ui.cards.innerHTML=picks.map(u=>`<button class="card" data-id="${u.id}" style="--card:${u.color}"><div class="rarity">${levels[u.id]?'EWOLUCJA':'NOWE ULEPSZENIE'}</div><div class="card-art ${u.id}" style="--glow:${u.color}"><i></i><span>${u.icon}</span><i></i></div><h3>${u.name}</h3><p>${u.desc}</p><span class="level">${levels[u.id]?'POZIOM '+(levels[u.id]+1):'POZIOM 1'}</span></button>`).join('');ui.cards.querySelectorAll('.card').forEach(c=>c.onclick=()=>choose(c.dataset.id))}
+function showLevelUp(){paused=true;ui.newLevel.textContent=player.level;ui.levelModal.classList.remove('hidden');const owned=Object.keys(levels),available=upgrades.filter(u=>owned.length<5||levels[u.id]);const picks=[...available].sort(()=>Math.random()-.5).slice(0,3);ui.cards.innerHTML=picks.map(u=>`<button class="card" data-id="${u.id}" style="--card:${u.color}"><div class="rarity">${levels[u.id]?'ULEPSZENIE':'NOWA ZDOLNOŚĆ'}</div><div class="card-art ${u.id}" style="--glow:${u.color}"><i></i><span>${u.icon}</span><i></i></div><h3>${u.name}</h3><p>${u.desc}</p><span class="level">${levels[u.id]?'POZIOM '+(levels[u.id]+1):'POZIOM 1'}</span></button>`).join('');ui.cards.querySelectorAll('.card').forEach(c=>c.onclick=()=>choose(c.dataset.id))}
 function choose(id){levels[id]=(levels[id]||0)+1;if(id==='vital'){player.maxHp+=20;player.hp=Math.min(player.maxHp,player.hp+30)}ui.levelModal.classList.add('hidden');paused=false;renderSlots()}
 function renderSlots(){const entries=Object.entries(levels);ui.slots.innerHTML='';for(let i=0;i<5;i++){const el=document.createElement('div');el.className='slot'+(entries[i]?' filled':'');if(entries[i]){const u=upgrades.find(x=>x.id===entries[i][0]);el.style.color=u.color;el.innerHTML=`${u.icon}<b>LV ${entries[i][1]}</b>`}ui.slots.appendChild(el)}document.querySelector('.equipment p span').textContent=entries.length+' / 5'}renderSlots();
 function updateUI(){ui.timer.textContent=`${String(Math.floor(elapsed/60)).padStart(2,'0')}:${String(Math.floor(elapsed%60)).padStart(2,'0')}`;ui.kills.textContent=player.kills;ui.level.textContent=ui.xpLevel.textContent=player.level;ui.healthText.textContent=`${Math.ceil(player.hp)} / ${player.maxHp}`;ui.healthBar.style.width=Math.max(0,player.hp/player.maxHp*100)+'%';ui.xpText.textContent=`${player.xp} / ${player.nextXp} XP`;ui.xpBar.style.width=player.xp/player.nextXp*100+'%';document.querySelector('#coordinates').textContent=`X ${String(Math.round(player.x)).padStart(4,'0')} · Y ${String(Math.round(player.y)).padStart(4,'0')}`;for(const [k,s] of Object.entries(skills)){const el=document.querySelector(`[data-key="${k.toUpperCase()}"]`);el.classList.toggle('cooldown',s.cd>0);el.querySelector('.cd').textContent=s.cd>0?s.cd.toFixed(s.cd<10?1:0):''}}
