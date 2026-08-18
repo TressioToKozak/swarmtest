@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#070914" />
+    <title>Swarmfall</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%2351f6df' d='M32 2 57 14 51 50 32 62 13 50 7 14Z'/%3E%3Cpath fill='%23071115' d='M20 18h24L31 30h13L22 48l8-14H19Z'/%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css?v=7" />
+  </head>
+  <body>
+    <main id="game-shell">
+      <canvas id="game" aria-label="Pole gry Swarmfall"></canvas>
+
+      <header class="topbar">
+        <div class="brand"><span class="brand-mark"><i></i></span><span>SWARMFALL<small> SURVIVAL</small></span></div>
+        <div class="timer-block"><span id="phaseLabel">FAZA 1 · NAPŁYW</span><strong id="timer">00:00</strong></div>
+        <div class="stats"><span>ELIMINACJE <b id="kills">0</b></span><span>POZIOM <b id="level">1</b></span></div>
+      </header>
+
+      <section class="health-wrap" aria-label="Punkty życia">
+        <div class="health-copy"><span>ŻYCIE</span><strong id="healthText">100 / 100</strong></div>
+        <div class="bar health"><i id="healthBar"></i></div>
+      </section>
+
+      <aside class="minimap-wrap" aria-label="Minimapa obszaru">
+        <div class="minimap-heading"><span>MINIMAPA</span><b>POZYCJA</b></div>
+        <canvas id="minimap" width="220" height="150"></canvas>
+        <div class="minimap-coords" id="coordinates">X 0000 · Y 0000</div>
+      </aside>
+
+      <section class="equipment" aria-label="Ekwipunek">
+        <p>ULEPSZENIA <span>0 / 5</span></p>
+        <div id="slots" class="slots"></div>
+      </section>
+
+      <section class="abilities" aria-label="Umiejętności">
+        <div class="ability" data-key="Q"><canvas width="72" height="72"></canvas><kbd>Q</kbd><span class="cd"></span><small>SALWA</small></div>
+        <div class="ability" data-key="E"><canvas width="72" height="72"></canvas><kbd>E</kbd><span class="cd"></span><small>ODRZUT</small></div>
+        <div class="ability ultimate" data-key="R"><canvas width="72" height="72"></canvas><kbd>R</kbd><span class="cd"></span><small>WYBUCH</small></div>
+      </section>
+
+      <button id="pauseBtn" class="pause-button" aria-label="Wstrzymaj grę"><span>Ⅱ</span> PAUZA</button>
+
+      <section class="xp-wrap">
+        <div class="xp-label"><span>POZIOM <b id="xpLevel">1</b></span><span id="xpText">0 / 24 XP</span></div>
+        <div class="bar xp"><i id="xpBar"></i></div>
+      </section>
+
+      <div class="crosshair" id="crosshair"></div>
+      <div class="wave-banner hidden" id="waveBanner"><small id="waveCaption">NOWA FALA</small><strong id="waveTitle">NAPŁYW</strong></div>
+
+      <section class="modal start-modal" id="startModal">
+        <div class="menu-frame">
+          <div class="menu-sigil"><i></i><b>S</b><i></i></div>
+          <h1>SWARM<em>FALL</em></h1>
+          <p>Pokonuj kolejne fale, zbieraj doświadczenie i rozwijaj postać.</p>
+          <div class="menu-actions">
+            <button type="button" id="continueBtn" class="continue-btn no-save" disabled><span class="menu-icon icon-continue"></span><b>KONTYNUUJ</b><small class="save-label">BRAK ZAPISU</small></button>
+            <button type="button" id="startBtn"><span class="menu-icon icon-new"></span><b>NOWA GRA</b></button>
+            <button type="button" id="charactersBtn" class="secondary-btn"><span class="menu-icon icon-character"></span><b>POSTACIE</b></button>
+            <button type="button" id="mapsBtn" class="secondary-btn"><span class="menu-icon icon-map"></span><b>MAPY</b></button>
+            <button type="button" id="instructionsBtn" class="secondary-btn"><span class="menu-icon icon-help"></span><b>JAK GRAĆ</b></button>
+            <button type="button" id="statsBtn" class="secondary-btn"><span class="menu-icon icon-stats"></span><b>STATYSTYKI</b></button>
+            <button type="button" class="secondary-btn locked-btn wide-button" disabled><span class="menu-icon icon-lock"></span><b>MULTIPLAYER</b><small>WKRÓTCE</small></button>
+          </div>
+        </div>
+      </section>
+
+      <section class="modal selection-modal hidden" id="charactersModal">
+        <div class="selection-panel">
+          <div class="eyebrow">POSTACIE</div><h2>WYBIERZ <em>POSTAĆ</em></h2>
+          <div class="selection-list"><article class="selection-card selected"><canvas id="characterPreviewCanvas" class="character-preview" width="500" height="230"></canvas><small>DOSTĘPNA</small><h3>Zwiadowca</h3><p>Szybki bojowy dron korzystający z automatycznego działka i umiejętności obszarowych.</p><b>WYBRANO ✓</b></article></div>
+          <button type="button" id="charactersBackBtn" class="secondary-btn">← WRÓĆ DO MENU</button>
+        </div>
+      </section>
+
+      <section class="modal selection-modal hidden" id="mapsModal">
+        <div class="selection-panel">
+          <div class="eyebrow">MAPY</div><h2>WYBIERZ <em>MAPĘ</em></h2>
+          <div class="selection-list"><article class="selection-card selected"><canvas id="mapPreviewCanvas" class="map-preview" width="500" height="230"></canvas><small>DOSTĘPNA</small><h3>Zalane ruiny</h3><p>Średniej wielkości teren ze skałami, zbiornikami wody i pozostałościami murów.</p><b>WYBRANO ✓</b></article></div>
+          <button type="button" id="mapsBackBtn" class="secondary-btn">← WRÓĆ DO MENU</button>
+        </div>
+      </section>
+
+      <section class="modal instructions-modal hidden" id="instructionsModal">
+        <div class="instruction-panel">
+          <div class="eyebrow">INSTRUKCJA</div>
+          <h2>JAK <em>GRAĆ</em></h2>
+          <div class="instruction-grid">
+            <article><div class="key-art"><kbd>W</kbd><span><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span></div><div><b>RUCH</b><p>Poruszaj się po strefie i omijaj wodę, skały oraz mury.</p></div></article>
+            <article><div class="aim-art">⌖</div><div><b>ATAK</b><p>Celuj myszką. Broń automatycznie strzela w stronę kursora.</p></div></article>
+            <article><div class="skill-keys"><kbd>Q</kbd><kbd>E</kbd><kbd>R</kbd></div><div><b>UMIEJĘTNOŚCI</b><p>Q uruchamia salwę, E odrzuca wrogów, a R powoduje potężny wybuch.</p></div></article>
+            <article><div class="xp-art">◆</div><div><b>EWOLUCJA</b><p>Zbieraj rdzenie XP i wybieraj jedną z trzech kart po awansie.</p></div></article>
+          </div>
+          <button id="backBtn" class="secondary-btn">← WRÓĆ DO MENU</button>
+        </div>
+      </section>
+
+      <section class="modal stats-modal hidden" id="statsModal">
+        <div class="instruction-panel stats-panel">
+          <div class="eyebrow">ZAPISANE NA TYM URZĄDZENIU</div>
+          <h2>TWOJE <em>STATYSTYKI</em></h2>
+          <div class="stats-grid">
+            <article><span>NAJDŁUŻSZA GRA</span><strong id="bestTime">00:00</strong></article>
+            <article><span>ŁĄCZNY CZAS GRY</span><strong id="totalTime">00:00</strong></article>
+            <article><span>REKORD ELIMINACJI</span><strong id="bestKills">0</strong></article>
+            <article><span>ŁĄCZNE ELIMINACJE</span><strong id="totalKills">0</strong></article>
+          </div>
+          <button id="statsBackBtn" class="secondary-btn">← WRÓĆ DO MENU</button>
+        </div>
+      </section>
+
+      <section class="modal pause-modal hidden" id="pauseModal">
+        <div class="pause-panel">
+          <div class="eyebrow">GRA WSTRZYMANA</div>
+          <h2>PAUZA</h2>
+          <p>Naciśnij Escape lub wybierz przycisk poniżej, aby kontynuować.</p>
+          <button id="resumeBtn">WRÓĆ DO GRY <span>→</span></button>
+          <button id="quitBtn" class="secondary-btn">ZAKOŃCZ GRĘ</button>
+        </div>
+      </section>
+
+      <section class="modal level-modal hidden" id="levelModal">
+          <div class="eyebrow">NOWY POZIOM <span id="newLevel">2</span></div>
+        <h2>WYBIERZ <em>ULEPSZENIE</em></h2>
+        <p>Wybierz jedną kartę. Możesz posiadać maksymalnie 5 różnych ulepszeń.</p>
+        <div class="cards" id="cards"></div>
+      </section>
+
+      <section class="modal end-modal hidden" id="endModal">
+        <div class="eyebrow">KONIEC GRY</div><h2>SPRÓBUJ <em>PONOWNIE</em></h2>
+        <p id="endStats"></p><button id="restartBtn">SPRÓBUJ PONOWNIE <span>↻</span></button>
+      </section>
+    </main>
+    <script src="game.js?v=7"></script>
+  </body>
+</html>
