@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="style.css?v=7" />
+    <link rel="stylesheet" href="style.css?v=8" />
   </head>
   <body>
     <main id="game-shell">
@@ -71,17 +71,17 @@
       </section>
 
       <section class="modal selection-modal hidden" id="charactersModal">
-        <div class="selection-panel">
+        <div class="selection-panel showcase-panel">
           <div class="eyebrow">POSTACIE</div><h2>WYBIERZ <em>POSTAĆ</em></h2>
-          <div class="selection-list"><article class="selection-card selected"><canvas id="characterPreviewCanvas" class="character-preview" width="500" height="230"></canvas><small>DOSTĘPNA</small><h3>Zwiadowca</h3><p>Szybki bojowy dron korzystający z automatycznego działka i umiejętności obszarowych.</p><b>WYBRANO ✓</b></article></div>
+          <div class="selection-list"><article class="selection-card selected"><canvas id="characterPreviewCanvas" class="character-preview" width="700" height="340"></canvas><small>DOSTĘPNA</small><h3>Zwiadowca</h3><p>Szybki bojowy dron korzystający z automatycznego działka i umiejętności obszarowych.</p><b>WYBRANO ✓</b></article></div>
           <button type="button" id="charactersBackBtn" class="secondary-btn">← WRÓĆ DO MENU</button>
         </div>
       </section>
 
       <section class="modal selection-modal hidden" id="mapsModal">
-        <div class="selection-panel">
+        <div class="selection-panel showcase-panel">
           <div class="eyebrow">MAPY</div><h2>WYBIERZ <em>MAPĘ</em></h2>
-          <div class="selection-list"><article class="selection-card selected"><canvas id="mapPreviewCanvas" class="map-preview" width="500" height="230"></canvas><small>DOSTĘPNA</small><h3>Zalane ruiny</h3><p>Średniej wielkości teren ze skałami, zbiornikami wody i pozostałościami murów.</p><b>WYBRANO ✓</b></article></div>
+          <div class="selection-list"><article class="selection-card selected"><canvas id="mapPreviewCanvas" class="map-preview" width="700" height="340"></canvas><small>DOSTĘPNA</small><h3>Zalane ruiny</h3><p>Średniej wielkości teren ze skałami, zbiornikami wody i pozostałościami murów.</p><b>WYBRANO ✓</b></article></div>
           <button type="button" id="mapsBackBtn" class="secondary-btn">← WRÓĆ DO MENU</button>
         </div>
       </section>
@@ -132,10 +132,10 @@
       </section>
 
       <section class="modal end-modal hidden" id="endModal">
-        <div class="eyebrow">KONIEC GRY</div><h2>SPRÓBUJ <em>PONOWNIE</em></h2>
+        <div class="eyebrow" id="endEyebrow">KONIEC GRY</div><h2 id="endTitle">SPRÓBUJ <em>PONOWNIE</em></h2>
         <p id="endStats"></p><button id="restartBtn">SPRÓBUJ PONOWNIE <span>↻</span></button>
       </section>
     </main>
-    <script src="game.js?v=7"></script>
+    <script src="game.js?v=8"></script>
   </body>
 </html>
