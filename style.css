@@ -29,3 +29,6 @@
 
 /* Saved run and director phase */
 .continue-btn{background:linear-gradient(90deg,#43dbc8,#76ffe9);border-color:#8ffff0}.continue-btn span{font-size:10px}.timer-block span{transition:color .25s}.menu-actions .continue-btn:not(.hidden){display:block;box-shadow:0 0 26px rgba(81,246,223,.18)}
+
+/* Clear wave feedback */
+.wave-banner{position:absolute;z-index:6;left:50%;top:22%;transform:translate(-50%,-50%);min-width:310px;padding:16px 45px;text-align:center;background:linear-gradient(90deg,transparent,rgba(7,15,28,.9) 18%,rgba(7,15,28,.9) 82%,transparent);pointer-events:none;animation:wave-in .3s ease-out}.wave-banner:before,.wave-banner:after{content:"";position:absolute;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--cyan),transparent)}.wave-banner:before{top:0}.wave-banner:after{bottom:0}.wave-banner small{display:block;color:var(--cyan);font:700 9px "Chakra Petch";letter-spacing:4px}.wave-banner strong{display:block;margin-top:4px;font:700 30px "Chakra Petch";letter-spacing:4px}.wave-banner.hidden{display:none}@keyframes wave-in{from{opacity:0;transform:translate(-50%,-65%) scale(.94)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
