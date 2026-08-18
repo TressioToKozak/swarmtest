@@ -4,7 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#070914" />
-    <title>Swarmfall — gra survivalowa</title>
+    <title>Swarmfall</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%2351f6df' d='M32 2 57 14 51 50 32 62 13 50 7 14Z'/%3E%3Cpath fill='%23071115' d='M20 18h24L31 30h13L22 48l8-14H19Z'/%3E%3C/svg%3E" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
@@ -42,6 +43,8 @@
         <div class="ability ultimate" data-key="R"><canvas width="72" height="72"></canvas><kbd>R</kbd><span class="cd"></span><small>WYBUCH</small></div>
       </section>
 
+      <button id="pauseBtn" class="pause-button" aria-label="Wstrzymaj grę"><span>Ⅱ</span> PAUZA</button>
+
       <section class="xp-wrap">
         <div class="xp-label"><span>POZIOM <b id="xpLevel">1</b></span><span id="xpText">0 / 24 XP</span></div>
         <div class="bar xp"><i id="xpBar"></i></div>
@@ -57,6 +60,7 @@
           <div class="menu-actions">
             <button id="startBtn">NOWA GRA <span>→</span></button>
             <button id="instructionsBtn" class="secondary-btn">JAK GRAĆ <span>?</span></button>
+            <button id="statsBtn" class="secondary-btn">STATYSTYKI <span>▥</span></button>
             <button class="secondary-btn locked-btn" disabled>POSTACIE <span>🔒</span></button>
             <button class="secondary-btn locked-btn" disabled>MULTIPLAYER <span>🔒</span></button>
           </div>
@@ -70,10 +74,34 @@
           <div class="instruction-grid">
             <article><div class="key-art"><kbd>W</kbd><span><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span></div><div><b>RUCH</b><p>Poruszaj się po strefie i omijaj wodę, skały oraz mury.</p></div></article>
             <article><div class="aim-art">⌖</div><div><b>ATAK</b><p>Celuj myszką. Broń automatycznie strzela w stronę kursora.</p></div></article>
-            <article><div class="skill-keys"><kbd>Q</kbd><kbd>E</kbd><kbd>R</kbd></div><div><b>UMIEJĘTNOŚCI</b><p>Q i E to zdolności bojowe. R uruchamia potężną supernową.</p></div></article>
+            <article><div class="skill-keys"><kbd>Q</kbd><kbd>E</kbd><kbd>R</kbd></div><div><b>UMIEJĘTNOŚCI</b><p>Q uruchamia salwę, E odrzuca wrogów, a R powoduje potężny wybuch.</p></div></article>
             <article><div class="xp-art">◆</div><div><b>EWOLUCJA</b><p>Zbieraj rdzenie XP i wybieraj jedną z trzech kart po awansie.</p></div></article>
           </div>
           <button id="backBtn" class="secondary-btn">← WRÓĆ DO MENU</button>
+        </div>
+      </section>
+
+      <section class="modal stats-modal hidden" id="statsModal">
+        <div class="instruction-panel stats-panel">
+          <div class="eyebrow">ZAPISANE NA TYM URZĄDZENIU</div>
+          <h2>TWOJE <em>STATYSTYKI</em></h2>
+          <div class="stats-grid">
+            <article><span>NAJDŁUŻSZA GRA</span><strong id="bestTime">00:00</strong></article>
+            <article><span>ŁĄCZNY CZAS GRY</span><strong id="totalTime">00:00</strong></article>
+            <article><span>REKORD ELIMINACJI</span><strong id="bestKills">0</strong></article>
+            <article><span>ŁĄCZNE ELIMINACJE</span><strong id="totalKills">0</strong></article>
+          </div>
+          <button id="statsBackBtn" class="secondary-btn">← WRÓĆ DO MENU</button>
+        </div>
+      </section>
+
+      <section class="modal pause-modal hidden" id="pauseModal">
+        <div class="pause-panel">
+          <div class="eyebrow">GRA WSTRZYMANA</div>
+          <h2>PAUZA</h2>
+          <p>Naciśnij Escape lub wybierz przycisk poniżej, aby kontynuować.</p>
+          <button id="resumeBtn">WRÓĆ DO GRY <span>→</span></button>
+          <button id="quitBtn" class="secondary-btn">ZAKOŃCZ GRĘ</button>
         </div>
       </section>
 
