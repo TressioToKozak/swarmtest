@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#070914" />
+    <title>VOID//SWARM</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main id="game-shell">
+      <canvas id="game" aria-label="Pole bitwy gry VOID SWARM"></canvas>
+
+      <header class="topbar">
+        <div class="brand"><span class="brand-mark">V</span><span>VOID<small>//</small>SWARM</span></div>
+        <div class="timer-block"><span>STREFA 01</span><strong id="timer">00:00</strong></div>
+        <div class="stats"><span>ELIMINACJE <b id="kills">0</b></span><span>POZIOM <b id="level">1</b></span></div>
+      </header>
+
+      <section class="health-wrap" aria-label="Punkty życia">
+        <div class="health-copy"><span>ŻYCIE</span><strong id="healthText">100 / 100</strong></div>
+        <div class="bar health"><i id="healthBar"></i></div>
+      </section>
+
+      <aside class="minimap-wrap" aria-label="Minimapa obszaru">
+        <div class="minimap-heading"><span>SKAN OBSZARU</span><b>SEKTOR 7-G</b></div>
+        <canvas id="minimap" width="220" height="150"></canvas>
+        <div class="minimap-coords" id="coordinates">X 0000 · Y 0000</div>
+      </aside>
+
+      <section class="equipment" aria-label="Ekwipunek">
+        <p>ULEPSZENIA <span>0 / 5</span></p>
+        <div id="slots" class="slots"></div>
+      </section>
+
+      <section class="abilities" aria-label="Umiejętności">
+        <div class="ability" data-key="Q"><canvas width="72" height="72"></canvas><kbd>Q</kbd><span class="cd"></span><small>CIĘCIE</small></div>
+        <div class="ability" data-key="E"><canvas width="72" height="72"></canvas><kbd>E</kbd><span class="cd"></span><small>IMPULS</small></div>
+        <div class="ability ultimate" data-key="R"><canvas width="72" height="72"></canvas><kbd>R</kbd><span class="cd"></span><small>SUPERNOWA</small></div>
+      </section>
+
+      <section class="xp-wrap">
+        <div class="xp-label"><span>POZIOM <b id="xpLevel">1</b></span><span id="xpText">0 / 24 XP</span></div>
+        <div class="bar xp"><i id="xpBar"></i></div>
+      </section>
+
+      <div class="crosshair" id="crosshair"></div>
+
+      <section class="modal start-modal" id="startModal">
+        <div class="eyebrow">PROTOKÓŁ PRZETRWANIA</div>
+        <h1>WEJDŹ W <em>RÓJ</em></h1>
+        <p>Nie przestawaj się ruszać. Broń strzela automatycznie w stronę kursora. Zbieraj rdzenie i ewoluuj.</p>
+        <div class="controls">
+          <div><span><kbd>W</kbd><br><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><b>RUCH</b></div>
+          <div><span class="mouse-icon">◉</span><b>CELOWANIE</b></div>
+          <div><span><kbd>Q</kbd><kbd>E</kbd><kbd>R</kbd></span><b>UMIEJĘTNOŚCI</b></div>
+        </div>
+        <button id="startBtn">ROZPOCZNIJ MISJĘ <span>→</span></button>
+        <small>Najlepiej grać z dźwiękiem i na pełnym ekranie</small>
+      </section>
+
+      <section class="modal level-modal hidden" id="levelModal">
+        <div class="eyebrow">AWANS • POZIOM <span id="newLevel">2</span></div>
+        <h2>WYBIERZ <em>ULEPSZENIE</em></h2>
+        <p>Wybierz jedną kartę. Możesz posiadać maksymalnie 5 różnych ulepszeń.</p>
+        <div class="cards" id="cards"></div>
+      </section>
+
+      <section class="modal end-modal hidden" id="endModal">
+        <div class="eyebrow">SYGNAŁ UTRACONY</div><h2>KONIEC <em>MISJI</em></h2>
+        <p id="endStats"></p><button id="restartBtn">SPRÓBUJ PONOWNIE <span>↻</span></button>
+      </section>
+    </main>
+    <script src="game.js"></script>
+  </body>
+</html>
