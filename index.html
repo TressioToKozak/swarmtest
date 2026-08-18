@@ -50,16 +50,31 @@
       <div class="crosshair" id="crosshair"></div>
 
       <section class="modal start-modal" id="startModal">
-        <div class="eyebrow">PROTOKÓŁ PRZETRWANIA</div>
-        <h1>WEJDŹ W <em>RÓJ</em></h1>
-        <p>Nie przestawaj się ruszać. Broń strzela automatycznie w stronę kursora. Zbieraj rdzenie i ewoluuj.</p>
-        <div class="controls">
-          <div><span><kbd>W</kbd><br><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><b>RUCH</b></div>
-          <div><span class="mouse-icon">◉</span><b>CELOWANIE</b></div>
-          <div><span><kbd>Q</kbd><kbd>E</kbd><kbd>R</kbd></span><b>UMIEJĘTNOŚCI</b></div>
+        <div class="menu-frame">
+          <div class="menu-sigil"><i></i><b>V</b><i></i></div>
+          <div class="eyebrow">OPERACJA // SEKTOR 7-G</div>
+          <h1>VOID<small>//</small><em>SWARM</em></h1>
+          <p>Wejdź do strefy. Ewoluuj. Przetrwaj rój.</p>
+          <div class="menu-actions">
+            <button id="startBtn">ROZPOCZNIJ MISJĘ <span>→</span></button>
+            <button id="instructionsBtn" class="secondary-btn">JAK GRAĆ <span>?</span></button>
+          </div>
+          <small>PROTOKÓŁ GOTOWY · POŁĄCZENIE STABILNE</small>
         </div>
-        <button id="startBtn">ROZPOCZNIJ MISJĘ <span>→</span></button>
-        <small>Najlepiej grać z dźwiękiem i na pełnym ekranie</small>
+      </section>
+
+      <section class="modal instructions-modal hidden" id="instructionsModal">
+        <div class="instruction-panel">
+          <div class="eyebrow">BAZA WIEDZY // 01</div>
+          <h2>JAK <em>GRAĆ</em></h2>
+          <div class="instruction-grid">
+            <article><div class="key-art"><kbd>W</kbd><span><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span></div><div><b>RUCH</b><p>Poruszaj się po strefie i omijaj wodę, skały oraz mury.</p></div></article>
+            <article><div class="aim-art">⌖</div><div><b>ATAK</b><p>Celuj myszką. Broń automatycznie strzela w stronę kursora.</p></div></article>
+            <article><div class="skill-keys"><kbd>Q</kbd><kbd>E</kbd><kbd>R</kbd></div><div><b>UMIEJĘTNOŚCI</b><p>Q i E to zdolności bojowe. R uruchamia potężną supernową.</p></div></article>
+            <article><div class="xp-art">◆</div><div><b>EWOLUCJA</b><p>Zbieraj rdzenie XP i wybieraj jedną z trzech kart po awansie.</p></div></article>
+          </div>
+          <button id="backBtn" class="secondary-btn">← WRÓĆ DO MENU</button>
+        </div>
       </section>
 
       <section class="modal level-modal hidden" id="levelModal">
