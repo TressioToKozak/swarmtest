@@ -63,9 +63,26 @@
             <button id="continueBtn" class="continue-btn hidden">KONTYNUUJ <span>▶</span></button>
             <button id="instructionsBtn" class="secondary-btn">JAK GRAĆ <span>?</span></button>
             <button id="statsBtn" class="secondary-btn">STATYSTYKI <span>▥</span></button>
-            <button class="secondary-btn locked-btn" disabled>POSTACIE <span>🔒</span></button>
+            <button id="charactersBtn" class="secondary-btn">POSTACIE <span>♙</span></button>
+            <button id="mapsBtn" class="secondary-btn">MAPY <span>⌁</span></button>
             <button class="secondary-btn locked-btn" disabled>MULTIPLAYER <span>🔒</span></button>
           </div>
+        </div>
+      </section>
+
+      <section class="modal selection-modal hidden" id="charactersModal">
+        <div class="selection-panel">
+          <div class="eyebrow">POSTACIE</div><h2>WYBIERZ <em>POSTAĆ</em></h2>
+          <div class="selection-list"><article class="selection-card selected"><div class="character-preview"><i></i></div><small>DOSTĘPNA</small><h3>Zwiadowca</h3><p>Szybka postać korzystająca z automatycznego działka i umiejętności obszarowych.</p><b>WYBRANO ✓</b></article></div>
+          <button id="charactersBackBtn" class="secondary-btn">← WRÓĆ DO MENU</button>
+        </div>
+      </section>
+
+      <section class="modal selection-modal hidden" id="mapsModal">
+        <div class="selection-panel">
+          <div class="eyebrow">MAPY</div><h2>WYBIERZ <em>MAPĘ</em></h2>
+          <div class="selection-list"><article class="selection-card selected"><div class="map-preview"><i></i><i></i><i></i></div><small>DOSTĘPNA</small><h3>Zalane ruiny</h3><p>Średniej wielkości teren ze skałami, zbiornikami wody i pozostałościami murów.</p><b>WYBRANO ✓</b></article></div>
+          <button id="mapsBackBtn" class="secondary-btn">← WRÓĆ DO MENU</button>
         </div>
       </section>
 
