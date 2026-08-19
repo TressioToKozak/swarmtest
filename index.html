@@ -17,9 +17,11 @@
 
       <header class="topbar">
         <div class="brand"><span class="brand-mark"><i></i></span><span>SWARMFALL<small> SURVIVAL</small></span></div>
-        <div class="timer-block"><span id="phaseLabel">FAZA 1 · NAPŁYW</span><strong id="timer">00:00</strong></div>
+        <div class="timer-block"><span id="phaseLabel">RUINY · ETAP 1/3</span><strong id="timer">00:00</strong><small id="bossEta">BOSS ZA 05:00</small></div>
         <div class="stats"><span class="hud-coins"><i class="coin-icon"></i><b id="hudCoins">0</b></span><span>ELIMINACJE <b id="kills">0</b></span><span>POZIOM <b id="level">1</b></span></div>
       </header>
+
+      <section class="boss-hud hidden" id="bossHud" aria-live="polite"><div><span id="bossName">TYTAN RUIN</span><b id="bossHealthText">100%</b></div><i><b id="bossHealthBar"></b></i></section>
 
       <section class="health-wrap" aria-label="Punkty życia">
         <div class="health-copy"><span>ŻYCIE</span><strong id="healthText">100 / 100</strong></div>
@@ -67,6 +69,7 @@
             <button type="button" id="mapsBtn" class="secondary-btn"><span class="menu-icon icon-map"></span><b>MAPY</b></button>
             <button type="button" id="instructionsBtn" class="secondary-btn"><span class="menu-icon icon-help"></span><b>JAK GRAĆ</b></button>
             <button type="button" id="statsBtn" class="secondary-btn"><span class="menu-icon icon-stats"></span><b>STATYSTYKI</b></button>
+            <button type="button" class="secondary-btn locked-btn" disabled><span class="menu-icon icon-achievements"></span><b>OSIĄGNIĘCIA</b><small>WKRÓTCE</small></button>
             <button type="button" class="secondary-btn locked-btn wide-button" disabled><span class="menu-icon icon-lock"></span><b>MULTIPLAYER</b><small>WKRÓTCE</small></button>
           </div>
         </div>
@@ -146,6 +149,9 @@
         <p id="endStats"></p><button id="restartBtn">SPRÓBUJ PONOWNIE <span>↻</span></button>
       </section>
     </main>
-    <script src="game.js?v=16"></script>
+    <script src="enemy-data.js?v=1"></script>
+    <script src="enemy-visuals.js?v=1"></script>
+    <script src="feedback.js?v=1"></script>
+    <script src="game.js?v=17"></script>
   </body>
 </html>
