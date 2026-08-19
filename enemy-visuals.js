@@ -16,7 +16,10 @@
     legs(ctx,r,'#d67ce8',time,2);ctx.fillStyle=hit?'#fff':'#61236f';ctx.strokeStyle='#f1a2ff';ctx.lineWidth=1.4;organic(ctx,r,9,time*3);ctx.fill();ctx.stroke();eye(ctx,r*.42,r*.24,'#ffd8ff');
   }
   function shooter(ctx,e,time,hit){
-    const r=e.r,recoil=e.attackCd>1.55?(1.75-e.attackCd)*8:0,charge=Math.max(0,(.5-e.attackCd)/.5);ctx.shadowColor='#ffb45e';ctx.shadowBlur=17;
+    // attackCd may stay negative while the shooter has no clear line of fire.
+    // Never feed that unbounded value into the muzzle ellipse: older saves could
+    // otherwise grow it to thousands of pixels and stall the canvas renderer.
+    const r=e.r,recoil=e.attackCd>1.55?Math.max(-8,Math.min(8,(1.75-e.attackCd)*8)):0,charge=e.attackCd>=0?Math.max(0,Math.min(1,1-e.attackCd/.5)):0;ctx.shadowColor='#ffb45e';ctx.shadowBlur=17;
     legs(ctx,r,'#a75935',time,3);ctx.fillStyle=hit?'#fff':'#43251f';ctx.strokeStyle='#ff9f59';ctx.lineWidth=2.2;organic(ctx,r,12,time*.9);ctx.fill();ctx.stroke();
     ctx.fillStyle='#24120e';ctx.beginPath();ctx.moveTo(-r*.75,-r*.45);ctx.lineTo(-r*1.2,-r*.85);ctx.lineTo(-r*.95,-r*.1);ctx.moveTo(-r*.75,r*.45);ctx.lineTo(-r*1.2,r*.85);ctx.lineTo(-r*.95,r*.1);ctx.fill();
     ctx.save();ctx.translate(-recoil,0);ctx.fillStyle='#d57d3e';ctx.beginPath();ctx.roundRect(r*.1,-r*.34,r*1.25,r*.68,r*.25);ctx.fill();ctx.stroke();ellipse(ctx,r*1.35,0,r*.28,r*.42,'#1b0d09');ctx.restore();eye(ctx,-r*.05,r*.25,'#ffe0a8');
