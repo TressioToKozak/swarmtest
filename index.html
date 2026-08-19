@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="style.css?v=10" />
+    <link rel="stylesheet" href="style.css?v=11" />
   </head>
   <body>
     <main id="game-shell">
@@ -73,7 +73,11 @@
       <section class="modal selection-modal hidden" id="charactersModal">
         <div class="selection-panel showcase-panel">
           <div class="eyebrow">POSTACIE</div><h2>WYBIERZ <em>POSTAĆ</em></h2>
-          <div class="selection-list"><article class="selection-card selected"><canvas id="characterPreviewCanvas" class="character-preview" width="700" height="340"></canvas><small>DOSTĘPNA</small><h3>Zwiadowca</h3><p>Szybki bojowy dron korzystający z automatycznego działka i umiejętności obszarowych.</p><b>WYBRANO ✓</b></article></div>
+          <div class="selection-list character-list">
+            <button type="button" class="selection-card character-card selected" data-character="scout"><canvas id="scoutPreview" class="character-preview" width="420" height="250"></canvas><small>DYSTANS</small><h3>Zwiadowca</h3><p>Automatyczne działko, odrzut i potężny wybuch obszarowy.</p><b>WYBRANO ✓</b></button>
+            <button type="button" class="selection-card character-card" data-character="warrior"><canvas id="warriorPreview" class="character-preview" width="420" height="250"></canvas><small>WALKA WRĘCZ</small><h3>Wojownik</h3><p>Leczy się atakami, teleportuje po E lub podwójnym W i czasowo wzmacnia obrażenia.</p><b>WYBIERZ</b></button>
+            <button type="button" class="selection-card character-card" data-character="druid"><canvas id="druidPreview" class="character-preview" width="420" height="250"></canvas><small>WSPARCIE</small><h3>Druid</h3><p>Strzela falami, leczy sojuszników i zwiększa ich mobilność.</p><b>WYBIERZ</b></button>
+          </div>
           <button type="button" id="charactersBackBtn" class="secondary-btn">← WRÓĆ DO MENU</button>
         </div>
       </section>
@@ -136,6 +140,6 @@
         <p id="endStats"></p><button id="restartBtn">SPRÓBUJ PONOWNIE <span>↻</span></button>
       </section>
     </main>
-    <script src="game.js?v=10"></script>
+    <script src="game.js?v=11"></script>
   </body>
 </html>
