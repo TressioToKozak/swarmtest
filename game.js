@@ -245,6 +245,13 @@ function drawScenery(s){
 }
 function drawLoot(item){const y=item.y+Math.sin(elapsed*4+item.bob)*4,color=item.type==='health'?'#ff6688':item.type==='xp'?'#51f6df':'#ffd467';ctx.save();ctx.translate(item.x,y);ctx.shadowBlur=20;ctx.shadowColor=color;ctx.fillStyle=color;if(item.type==='health'){ctx.fillRect(-3,-10,6,20);ctx.fillRect(-10,-3,20,6)}else if(item.type==='xp'){ctx.rotate(Math.PI/4);ctx.fillRect(-7,-7,14,14)}else if(item.type==='coin'){ctx.rotate(elapsed*1.8);ctx.beginPath();for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.lineTo(Math.cos(a)*11,Math.sin(a)*11)}ctx.closePath();ctx.fill();ctx.shadowBlur=0;ctx.strokeStyle='#fff0a0';ctx.lineWidth=2;ctx.stroke();ctx.fillStyle='#33280d';ctx.fillRect(-2,-5,4,10);ctx.fillRect(-5,-2,10,4)}else{ctx.beginPath();for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,r=i%2?5:11;ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r)}ctx.closePath();ctx.fill()}ctx.restore()}
 function drawCrate(c){ctx.save();ctx.translate(c.x,c.y);ctx.shadowBlur=c.opened?5:14;ctx.shadowColor=c.reward==='health'?'#ff6688':c.reward==='level'?'#ffd467':'#d99b45';ctx.fillStyle=c.hit?'#fff':c.opened?'#151b24':'#49351e';ctx.strokeStyle=c.opened?'#394657':'#d39a48';ctx.lineWidth=2;ctx.fillRect(-17,-14,34,28);ctx.strokeRect(-17,-14,34,28);ctx.fillStyle=c.opened?'#0b0e14':'#8c612c';ctx.fillRect(-3,-14,6,28);ctx.fillRect(-17,-3,34,6);if(c.opened){ctx.rotate(-.5);ctx.fillStyle='#293342';ctx.fillRect(-18,-21,36,7)}else{ctx.fillStyle='#ffd071';ctx.beginPath();ctx.arc(0,0,4,0,7);ctx.fill()}ctx.restore()}
+function drawEnemyTelegraph(e){
+  const aim=Math.atan2(player.y-e.y,player.x-e.x);ctx.save();
+  if(e.type==='charger'&&e.windup){const alpha=.35+.35*Math.sin(elapsed*32);ctx.globalAlpha=alpha;ctx.strokeStyle='#9fd1ff';ctx.lineWidth=5;ctx.setLineDash([18,10]);ctx.beginPath();ctx.moveTo(e.x,e.y);ctx.lineTo(e.x+Math.cos(aim)*430,e.y+Math.sin(aim)*430);ctx.stroke()}
+  if(e.type==='exploder'){const danger=Math.max(0,1-dist(e,player)/420);ctx.globalAlpha=.18+danger*.32;ctx.strokeStyle='#ff9a43';ctx.lineWidth=2;ctx.setLineDash([7,7]);ctx.beginPath();ctx.arc(e.x,e.y,145,0,Math.PI*2);ctx.stroke()}
+  if(e.type==='shooter'&&e.attackCd<.45){ctx.globalAlpha=(.45-e.attackCd)*1.6;ctx.strokeStyle='#ffc46b';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(e.x,e.y);ctx.lineTo(player.x,player.y);ctx.stroke()}
+  if(isBoss(e)&&e.bossTier===1&&e.dash>0){ctx.globalAlpha=.35;ctx.fillStyle='#ff6577';ctx.fillRect(e.x,e.y-4,(e.dx||0)*260,8)}ctx.restore();
+}
 function drawEnemy(e){
   const angle=Math.atan2(player.y-e.y,player.x-e.x),bob=Math.sin(elapsed*7+e.phase);
   ctx.save();ctx.translate(e.x,e.y);ctx.rotate(angle);
