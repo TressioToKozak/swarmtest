@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="style.css?v=11" />
+    <link rel="stylesheet" href="style.css?v=12" />
   </head>
   <body>
     <main id="game-shell">
@@ -113,6 +113,9 @@
             <article><span>ŁĄCZNY CZAS GRY</span><strong id="totalTime">00:00</strong></article>
             <article><span>REKORD ELIMINACJI</span><strong id="bestKills">0</strong></article>
             <article><span>ŁĄCZNE ELIMINACJE</span><strong id="totalKills">0</strong></article>
+            <article class="character-stat scout-stat"><span>GRY · ZWIADOWCA</span><strong id="scoutGames">0</strong></article>
+            <article class="character-stat warrior-stat"><span>GRY · WOJOWNIK</span><strong id="warriorGames">0</strong></article>
+            <article class="character-stat druid-stat"><span>GRY · DRUID</span><strong id="druidGames">0</strong></article>
           </div>
           <button id="statsBackBtn" class="secondary-btn">← WRÓĆ DO MENU</button>
         </div>
@@ -140,6 +143,6 @@
         <p id="endStats"></p><button id="restartBtn">SPRÓBUJ PONOWNIE <span>↻</span></button>
       </section>
     </main>
-    <script src="game.js?v=11"></script>
+    <script src="game.js?v=12"></script>
   </body>
 </html>
