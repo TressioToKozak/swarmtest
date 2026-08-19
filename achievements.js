@@ -8,7 +8,9 @@ window.Achievements=(()=>{
     {id:'boss_2',name:'Głębiej w ruiny',description:'Pokonaj drugiego bossa.',reward:10},
     {id:'boss_3',name:'Serce ruin',description:'Pokonaj trzeciego bossa.',reward:15},
     {id:'map_1',name:'Ruiny oczyszczone',description:'Ukończ pierwszą mapę.',reward:5},
-    {id:'item_6',name:'Pełny potencjał',description:'Ulepsz dowolny przedmiot do 6. poziomu.',reward:15}
+    {id:'item_6',name:'Pełny potencjał',description:'Ulepsz dowolny przedmiot do 6. poziomu.',reward:15},
+    {id:'hard_clear',name:'Bez taryfy ulgowej',description:'Ukończ mapę na poziomie Hard.',reward:15},
+    {id:'nightmare_clear',name:'Przebudzenie z koszmaru',description:'Ukończ mapę na poziomie Nightmare.',reward:30}
   ]);
   function load(){try{return new Set(JSON.parse(localStorage.getItem(KEY)||'[]'))}catch{return new Set()}}
   const completed=load();
