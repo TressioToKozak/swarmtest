@@ -1,5 +1,5 @@
 (() => {
-  let session=null,authoritativePlayerId=null,connectionGeneration=0,state=null,previous=null,receivedAt=0,sendClock=0,lastLevelRound=0,lastWaveSeq=0,inputSeq=0,abilityInputSeq=0,serverOffset=0,serverPaused=false,localMenuOpen=false,isDead=false,isSpectator=false;
+  let session=null,authoritativePlayerId=null,connectionGeneration=0,lastAppliedHelloAck=null,state=null,previous=null,receivedAt=0,sendClock=0,lastLevelRound=0,lastWaveSeq=0,inputSeq=0,abilityInputSeq=0,serverOffset=0,serverPaused=false,localMenuOpen=false,isDead=false,isSpectator=false;
   let remotePlayers=[],effectiveSpeed=0,remoteVisuals=new Map(),localAttackSeq=0,localAbilitySeq=0,pendingInputs=[];
   let previousEnemies=new Map(),enemyVisuals=new Map(),bulletVisuals=new Map();
   const cooldownElements={};
@@ -8,8 +8,8 @@
   function getSession(){if(session)return session;try{session=JSON.parse(sessionStorage.getItem('swarmfall-multiplayer-session')||'null')}catch{}return session}
   function isActive(){return Boolean(getSession()&&authoritativePlayerId&&running&&socket()?.isOpen())}
   function accept(message){
-    if(message.type==='helloAck'){authoritativePlayerId=message.playerId;connectionGeneration=message.connectionGeneration||0;const sequences=SwarmRemoteVisuals.resumeSequences(inputSeq,abilityInputSeq,message);inputSeq=sequences.inputSeq;abilityInputSeq=sequences.abilityInputSeq;pendingInputs=pendingInputs.filter(input=>input.seq>inputSeq);remoteVisuals.clear();enemyVisuals.clear();bulletVisuals.clear();session=getSession();return}
-    if(message.type==='resumeRejected'){authoritativePlayerId=null;session=null;pendingInputs=[];return}
+    if(message.type==='helloAck'){if(!SwarmSocketState.shouldApplyHelloAck(lastAppliedHelloAck,message))return;lastAppliedHelloAck={connectionId:message.connectionId,connectionGeneration:message.connectionGeneration};authoritativePlayerId=message.playerId;connectionGeneration=message.connectionGeneration;const sequences=SwarmRemoteVisuals.resumeSequences(inputSeq,abilityInputSeq,message);inputSeq=sequences.inputSeq;abilityInputSeq=sequences.abilityInputSeq;pendingInputs=pendingInputs.filter(input=>input.seq>inputSeq);remoteVisuals.clear();enemyVisuals.clear();bulletVisuals.clear();session=getSession();return}
+    if(message.type==='resumeRejected'){authoritativePlayerId=null;connectionGeneration=0;lastAppliedHelloAck=null;session=null;pendingInputs=[];remoteVisuals.clear();enemyVisuals.clear();bulletVisuals.clear();return}
     if(!getSession()||!authoritativePlayerId)return;
     if(message.type==='gameStarted'){
       document.getElementById('multiplayerWaiting').classList.add('hidden');state=null;previous=null;lastLevelRound=0;lastWaveSeq=0;
@@ -75,5 +75,5 @@
   function requestReroll(index){if(isActive())socket().send('rerollUpgrade',{index})}
   function drawPlayers(context){remotePlayers.filter(other=>other.alive!==false).forEach(other=>drawCharacterActor(context,{x:other.x,y:other.y,character:other.character,facing:other.facing,animation:other.animation,animationTime:other.animationTime,name:other.name||'GRACZ',hp:other.hp,maxHp:other.maxHp,attackAnim:other.attackAnim}))}
   window.SwarmMultiplayerSync={isActive,frame,pressAbility,toggleLocalMenu,levelShown,choiceMade,requestReroll,drawPlayers};
-  const wait=setInterval(()=>{if(socket()?.on){socket().on(accept);clearInterval(wait)}},50);
+  const currentSocket=socket(),existingAck=currentSocket?.getLastHelloAck?.();if(existingAck)accept(existingAck);currentSocket?.on?.(accept);
 })();
