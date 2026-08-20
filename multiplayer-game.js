@@ -1,21 +1,19 @@
 (() => {
-  const LOBBY_KEY='swarmfall-multiplayer-lobbies';let session=null,lastRound=0,remotePlayers=[],applying=false,spawnPlaced=false;
+  let session=null,state=null,previous=null,receivedAt=0,sendClock=0,lastLevelRound=0,remotePlayers=[];
+  try{session=JSON.parse(sessionStorage.getItem('swarmfall-multiplayer-session')||'null')}catch{}
+  const socket=()=>window.SwarmSocket;
   function getSession(){if(session)return session;try{session=JSON.parse(sessionStorage.getItem('swarmfall-multiplayer-session')||'null')}catch{}return session}
-  const read=(key,fallback={})=>{try{return JSON.parse(localStorage.getItem(key)||JSON.stringify(fallback))}catch{return fallback}};
-  function lobbyData(){const s=getSession();return s?read(LOBBY_KEY)[s.code]:null}
-  function updateLobby(change){const s=getSession(),all=read(LOBBY_KEY),lobby=all[s?.code];if(!lobby)return null;change(lobby);lobby.updatedAt=Date.now();localStorage.setItem(LOBBY_KEY,JSON.stringify(all));return lobby}
-  function publicPlayer(){return{x:player.x,y:player.y,hp:player.hp,maxHp:player.maxHp,kills:player.kills,character:chosenCharacter}}
-  function sync(){
-    const s=getSession();if(!s||!running)return;let lobby=updateLobby(value=>{value.gamePlayers=value.gamePlayers||{};value.gamePlayers[s.playerId]=publicPlayer()});if(!lobby)return;if(!spawnPlaced){const index=Math.max(0,lobby.players.findIndex(p=>p.id===s.playerId)),angle=index*Math.PI/2;player.x+=Math.cos(angle)*42;player.y+=Math.sin(angle)*42;spawnPlaced=true}
-    remotePlayers=Object.entries(lobby.gamePlayers||{}).filter(([id])=>id!==s.playerId).map(([,value])=>value);
-    const stateKey=`swarmfall-shared-game-${s.code}`;
-    if(s.host&&!applying){enemies.forEach((enemy,index)=>enemy._syncId=enemy._syncId||`${Date.now().toString(36)}-${index}`);const events=lobby.damageEvents||[];events.forEach(event=>{const target=enemies.find(enemy=>enemy._syncId===event.id);if(target)target.hp-=event.damage});if(events.length)updateLobby(value=>value.damageEvents=[]);localStorage.setItem(stateKey,JSON.stringify({at:Date.now(),elapsed,level:player.level,xp:player.xp,nextXp:player.nextXp,enemies:enemies.slice(0,500),orbs,loot,crates}))}
-    else if(!s.host){const shared=read(stateKey,null);if(shared&&Date.now()-shared.at<2000){const authoritative=new Map((shared.enemies||[]).map(enemy=>[enemy._syncId,enemy.hp])),damage=[];enemies.forEach(enemy=>{const hp=authoritative.get(enemy._syncId);if(hp!==undefined&&enemy.hp<hp)damage.push({id:enemy._syncId,damage:hp-enemy.hp})});if(damage.length)updateLobby(value=>{value.damageEvents=[...(value.damageEvents||[]),...damage].slice(-100)});applying=true;elapsed=shared.elapsed;player.level=shared.level;player.xp=shared.xp;player.nextXp=shared.nextXp;enemies=shared.enemies||[];orbs=shared.orbs||[];loot=shared.loot||[];crates=shared.crates||crates;applying=false}}
-    const round=lobby.levelRound||0;if(round>lastRound){lastRound=round;const me=lobby.players.find(p=>p.id===s.playerId);if(me?.choiceRound!==round&&ui.levelModal.classList.contains('hidden')){levelChoicesQueued=Math.max(1,levelChoicesQueued);showLevelUp(Boolean(lobby.levelBossMode))}}
-    if(lobby.levelRound&&lobby.players.every(p=>p.choiceRound===lobby.levelRound)){paused=false;lobby=updateLobby(value=>{value.levelRound=0})||lobby}
+  function isActive(){return Boolean(getSession()&&running&&socket()?.isOpen())}
+  function accept(message){
+    if(!getSession())return;
+    if(message.type==='gameState'){previous=state;state=message.state;receivedAt=performance.now();applyState()}
+    if(message.type==='levelUp'&&message.round>lastLevelRound){lastLevelRound=message.round;paused=true;levelChoicesQueued=1;upgradeOfferKeys=[];upgradeRerolled=[];showLevelUp(false)}
   }
-  function levelShown(bossMode){const s=getSession();if(!s||!running)return;const lobby=updateLobby(value=>{if(!value.levelRound){value.levelRound=(value.levelSequence||0)+1;value.levelSequence=value.levelRound;value.levelBossMode=bossMode;value.players.forEach(p=>p.choiceRound=0)}});lastRound=lobby?.levelRound||lastRound}
-  function choiceMade(){const s=getSession();if(!s||!running)return false;const lobby=updateLobby(value=>{const me=value.players.find(p=>p.id===s.playerId);if(me)me.choiceRound=value.levelRound});return Boolean(lobby?.levelRound&&!lobby.players.every(p=>p.choiceRound===lobby.levelRound))}
-  function drawPlayers(context){remotePlayers.forEach(other=>{context.save();context.globalAlpha=.82;context.translate(other.x,other.y);context.fillStyle=other.character==='warrior'?'#ffc36c':other.character==='druid'?'#70ff9a':'#51f6df';context.shadowBlur=15;context.shadowColor=context.fillStyle;context.beginPath();context.arc(0,0,15,0,Math.PI*2);context.fill();context.strokeStyle='#fff';context.lineWidth=2;context.stroke();context.fillStyle='#fff';context.font='700 8px Chakra Petch';context.textAlign='center';context.fillText(other.character==='warrior'?'WOJOWNIK':other.character==='druid'?'DRUID':'ZWIADOWCA',0,-23);context.restore()})}
-  window.SwarmMultiplayerSync={levelShown,choiceMade,drawPlayers};setInterval(sync,100)
+  function applyState(){if(!state)return;elapsed=state.time;player.level=state.level;player.xp=state.xp;player.nextXp=state.nextXp;paused=state.paused;const mine=state.players.find(p=>p.id===session.playerId);if(mine){player.x=mine.x;player.y=mine.y;player.hp=mine.hp;player.maxHp=mine.maxHp;player.kills=mine.kills}remotePlayers=state.players.filter(p=>p.id!==session.playerId);enemies=state.enemies.map(e=>({...e,type:'melee',hit:0,attackCd:1,chargeCd:1,phase:0}));bullets=state.bullets.map(b=>({...b,r:4,kind:'scoutBullet'}));orbs=[];loot=[];camera.x=Math.max(0,Math.min(WORLD.w-W,player.x-W/2));camera.y=Math.max(0,Math.min(WORLD.h-H,player.y-H/2));updateUI()}
+  function frame(dt){if(!isActive())return;sendClock-=dt;if(sendClock<=0){const aim=Math.atan2(mouse.y+camera.y-player.y,mouse.x+camera.x-player.x);socket().send('playerInput',{up:!!keys.w,down:!!keys.s,left:!!keys.a,right:!!keys.d,aim,q:!!keys.q,e:!!keys.e,r:!!keys.r});sendClock=1/25}if(state){const alpha=Math.min(1,(performance.now()-receivedAt)/80);remotePlayers=state.players.filter(p=>p.id!==session.playerId).map(current=>{const old=previous?.players.find(p=>p.id===current.id)||current;return{...current,x:old.x+(current.x-old.x)*alpha,y:old.y+(current.y-old.y)*alpha}})}}
+  function levelShown(){}
+  function choiceMade(choice){if(!isActive())return false;socket().send('upgradeChoice',{choice});return true}
+  function drawPlayers(context){remotePlayers.forEach(other=>{context.save();context.globalAlpha=.9;context.translate(other.x,other.y);context.fillStyle=other.character==='warrior'?'#ffc36c':other.character==='druid'?'#70ff9a':'#51f6df';context.shadowBlur=15;context.shadowColor=context.fillStyle;context.beginPath();context.arc(0,0,15,0,Math.PI*2);context.fill();context.strokeStyle='#fff';context.lineWidth=2;context.stroke();context.fillStyle='#fff';context.font='700 8px Chakra Petch';context.textAlign='center';context.fillText(other.name||'GRACZ',0,-23);context.restore()})}
+  window.SwarmMultiplayerSync={isActive,frame,levelShown,choiceMade,drawPlayers};
+  const wait=setInterval(()=>{if(socket()?.on){socket().on(accept);clearInterval(wait)}},50)
 })();

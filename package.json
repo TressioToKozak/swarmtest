@@ -1,0 +1,1 @@
+{"name":"swarmfall","version":"1.0.0","private":true,"description":"Swarmfall with an authoritative WebSocket multiplayer server","scripts":{"start":"node server.js","test":"node --test test/*.test.js"},"engines":{"node":">=20"}}
