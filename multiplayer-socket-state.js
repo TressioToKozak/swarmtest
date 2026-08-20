@@ -1,5 +1,5 @@
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.SwarmSocketState=api})(typeof globalThis!=='undefined'?globalThis:this,()=>{
-  const CONTROL_TYPES=new Set(['lobbyState','gameStarted','gameOver','levelUp']);
+  const CONTROL_TYPES=new Set(['lobbyState','gameStarted','gameOver','levelUp','pauseState']);
   function createControlChannel(){
     const listeners=new Set(),control=new Map();let handshakeState='idle',lastHelloAck=null;
     function beginConnection(){handshakeState='pending';lastHelloAck=null;control.clear()}
