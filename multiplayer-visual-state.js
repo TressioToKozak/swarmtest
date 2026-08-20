@@ -13,7 +13,10 @@
   function gameplayEnabled({isDead=false,serverPaused=false,localMenuOpen=false}={}){return!isDead&&!serverPaused&&!localMenuOpen}
   function shouldQueueInput(enabled,isDead){return Boolean(enabled&&!isDead)}
   function pauseUiState(info={},playerId){const requested=Math.max(0,info.requested||0),required=Math.max(0,info.required||0),localRequested=Array.isArray(info.requesterIds)&&info.requesterIds.includes(playerId);return{localRequested,showModal:Boolean(info.paused||localRequested),showStatus:!info.paused&&!localRequested&&requested>0,text:`PAUSE REQUEST · ${requested} / ${required}`}}
+  function singleplayerSimulationAllowed(multiplayerMode){return!multiplayerMode}
+  function canTogglePauseMenu({upgradePaused=false,pauseReason=null,levelModalOpen=false}={}){return!upgradePaused&&pauseReason!=='upgrade'&&!levelModalOpen}
+  function cooldownFreezeShift(startedAt,now){return startedAt?Math.max(0,now-startedAt):0}
   function classifyPlayers(players,authoritativePlayerId){const local=players.filter(player=>player.id===authoritativePlayerId),remote=players.filter(player=>player.id!==authoritativePlayerId);return{local:local.length===1?local[0]:null,remote,valid:local.length===1&&!remote.some(player=>player.id===authoritativePlayerId)}}
   function resumeSequences(currentInput,currentAbility,ack={}){return{inputSeq:Math.max(currentInput,ack.lastProcessedInputSeq||0),abilityInputSeq:Math.max(currentAbility,ack.lastAbilityInputSeq||0)}}
-  return{update,sample,updateEntities,sampleEntities,damageFlash,lerpAngle,exponentialAlpha,cameraFollowStep,selectSpectatorTarget,canParticipateInUpgrade,teamHudData,gameplayEnabled,shouldQueueInput,pauseUiState,classifyPlayers,resumeSequences}
+  return{update,sample,updateEntities,sampleEntities,damageFlash,lerpAngle,exponentialAlpha,cameraFollowStep,selectSpectatorTarget,canParticipateInUpgrade,teamHudData,gameplayEnabled,shouldQueueInput,pauseUiState,singleplayerSimulationAllowed,canTogglePauseMenu,cooldownFreezeShift,classifyPlayers,resumeSequences}
 });

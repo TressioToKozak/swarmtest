@@ -6,7 +6,7 @@
     function publish(message){
       if(message?.type==='helloAck'){lastHelloAck={...message};handshakeState='authenticated'}
       else if(message?.type==='resumeRejected'){lastHelloAck=null;handshakeState='rejected';control.clear()}
-      else if(CONTROL_TYPES.has(message?.type)){if(message.type==='gameStarted'){control.delete('gameOver');control.delete('levelUp')}if(message.type==='gameOver')control.delete('levelUp');if(message.type==='lobbyState'&&!message.lobby?.started){control.delete('gameStarted');control.delete('gameOver');control.delete('levelUp')}control.set(message.type,message)}
+      else if(CONTROL_TYPES.has(message?.type)){if(message.type==='gameStarted'){control.delete('gameOver');control.delete('levelUp');control.delete('pauseState')}if(message.type==='gameOver')control.delete('levelUp');if(message.type==='lobbyState'&&!message.lobby?.started){control.delete('gameStarted');control.delete('gameOver');control.delete('levelUp');control.delete('pauseState')}control.set(message.type,message)}
       listeners.forEach(listener=>listener(message));
     }
     function on(listener){listeners.add(listener);if(lastHelloAck)listener(lastHelloAck);control.forEach(message=>listener(message));return()=>listeners.delete(listener)}

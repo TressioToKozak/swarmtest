@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="style.css?v=22" />
+    <link rel="stylesheet" href="style.css?v=23" />
   </head>
   <body>
     <main id="game-shell">
@@ -27,6 +27,7 @@
       <div class="death-overlay hidden" id="multiplayerDeathOverlay" aria-live="assertive"><strong>YOU ARE DEAD</strong><span>SPECTATING TEAMMATE</span></div>
       <div class="spectator-label hidden" id="multiplayerSpectatorLabel"></div>
       <div class="pause-status hidden" id="multiplayerPauseStatus"></div>
+      <div class="connection-status hidden" id="multiplayerConnectionStatus">CONNECTION LOST · RECONNECTING...</div>
 
       <section class="health-wrap" aria-label="Punkty życia">
         <div class="health-copy"><span>ŻYCIE</span><strong id="healthText">100 / 100</strong></div>
@@ -200,10 +201,10 @@
     <script src="shared-game-data.js?v=1"></script>
     <script src="upgrade-data.js?v=2"></script>
     <script src="settings-data.js?v=1"></script>
-    <script src="game.js?v=27"></script>
-    <script src="multiplayer-socket-state.js?v=3"></script>
+    <script src="game.js?v=28"></script>
+    <script src="multiplayer-socket-state.js?v=4"></script>
     <script src="multiplayer.js?v=4"></script>
-    <script src="multiplayer-visual-state.js?v=4"></script>
-    <script src="multiplayer-game.js?v=6"></script>
+    <script src="multiplayer-visual-state.js?v=5"></script>
+    <script src="multiplayer-game.js?v=7"></script>
   </body>
 </html>
