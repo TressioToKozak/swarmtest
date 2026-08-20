@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="style.css?v=19" />
+    <link rel="stylesheet" href="style.css?v=20" />
   </head>
   <body>
     <main id="game-shell">
@@ -23,6 +23,9 @@
 
       <section class="boss-hud hidden" id="bossHud" aria-live="polite"><div><span id="bossName">TYTAN RUIN</span><b id="bossHealthText">100%</b></div><i><b id="bossHealthBar"></b></i></section>
       <section class="event-hud hidden" id="eventHud" aria-live="polite"><small id="eventKind">WYDARZENIE</small><strong id="eventName">ŁOWCA ELITY</strong><span id="eventObjective">00:45</span><i><b id="eventBar"></b></i></section>
+      <aside class="team-hud hidden" id="multiplayerTeamHud" aria-label="Zdrowie drużyny"></aside>
+      <div class="death-overlay hidden" id="multiplayerDeathOverlay" aria-live="assertive"><strong>YOU ARE DEAD</strong><span>SPECTATING TEAMMATE</span></div>
+      <div class="spectator-label hidden" id="multiplayerSpectatorLabel"></div>
 
       <section class="health-wrap" aria-label="Punkty życia">
         <div class="health-copy"><span>ŻYCIE</span><strong id="healthText">100 / 100</strong></div>
@@ -199,7 +202,7 @@
     <script src="game.js?v=27"></script>
     <script src="multiplayer-socket-state.js?v=2"></script>
     <script src="multiplayer.js?v=4"></script>
-    <script src="multiplayer-visual-state.js?v=1"></script>
-    <script src="multiplayer-game.js?v=3"></script>
+    <script src="multiplayer-visual-state.js?v=2"></script>
+    <script src="multiplayer-game.js?v=4"></script>
   </body>
 </html>
