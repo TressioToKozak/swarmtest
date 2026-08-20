@@ -1,0 +1,12 @@
+'use strict';
+const test=require('node:test'),assert=require('node:assert/strict');
+const {update,sample,damageFlash}=require('../multiplayer-visual-state');
+const player=(overrides={})=>({id:'p2',x:10,y:20,character:'scout',name:'Guest',hp:100,maxHp:100,alive:true,facing:0,attackSeq:0,abilitySeq:0,...overrides});
+test('new remote player starts idle with the correct character and no position glitch',()=>{const cache=new Map();update(cache,[player({character:'warrior'})],1000);const visual=sample(cache.get('p2'),1000);assert.equal(visual.character,'warrior');assert.equal(visual.animation,'idle');assert.equal(visual.x,10);assert.equal(visual.y,20)});
+test('movement derives run animation and facing without replacing cached state',()=>{const cache=new Map();update(cache,[player()],1000);const original=cache.get('p2');original.animationTime=2;update(cache,[player({x:30,y:20})],1100);assert.equal(cache.get('p2'),original);assert.equal(original.animation,'run');assert.equal(original.facing,0);assert.equal(original.animationTime,2)});
+test('idle snapshot preserves server facing while animation time advances locally',()=>{const cache=new Map();update(cache,[player()],1000);sample(cache.get('p2'),1050);update(cache,[player({facing:Math.PI/2})],1100);const visual=sample(cache.get('p2'),1150);assert.equal(visual.animation,'idle');assert.equal(visual.facing,Math.PI/2);assert.ok(visual.animationTime>0)});
+test('attack and ability sequences trigger visual-only timers',()=>{const cache=new Map();update(cache,[player()],1000);update(cache,[player({attackSeq:1,abilitySeq:1,lastAbility:'q'})],1100);const visual=sample(cache.get('p2'),1150);assert.ok(visual.attackAnim>0);assert.equal(visual.abilityActive,true);assert.equal(visual.lastAbility,'q')});
+test('missing players are removed while reconnect creates a clean persistent state',()=>{const cache=new Map();update(cache,[player()],1000);update(cache,[],1100);assert.equal(cache.has('p2'),false);update(cache,[player({x:80,character:'druid'})],1200);const visual=sample(cache.get('p2'),1200);assert.equal(visual.x,80);assert.equal(visual.character,'druid')});
+test('interpolation samples between snapshots and clamps after lag',()=>{const cache=new Map();update(cache,[player({x:0})],1000);update(cache,[player({x:80})],1100);assert.equal(sample(cache.get('p2'),1140).x,40);assert.equal(sample(cache.get('p2'),1400).x,80)});
+
+test('enemy damage flash is derived from authoritative HP decrease',()=>{assert.equal(damageFlash({hp:20},{hp:12}),.12);assert.equal(damageFlash({hp:12},{hp:12}),0)});
