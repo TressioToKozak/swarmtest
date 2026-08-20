@@ -2,7 +2,7 @@
 const test=require('node:test'),assert=require('node:assert/strict'),http=require('node:http');
 const {createStaticHandler,publicFiles}=require('../server');
 
-const multiplayerRuntimeFiles=['multiplayer-socket-state.js','multiplayer.js','multiplayer-visual-state.js','multiplayer-game.js'];
+const multiplayerRuntimeFiles=['multiplayer-socket-state.js','multiplayer-client-utils.js','multiplayer.js','multiplayer-visual-state.js','multiplayer-game.js'];
 
 test('HTTP server serves every multiplayer runtime JavaScript file',async t=>{
   const server=http.createServer(createStaticHandler());
@@ -16,4 +16,11 @@ test('HTTP server serves every multiplayer runtime JavaScript file',async t=>{
     assert.match(response.headers['content-type']||'',/^text\/javascript(?:;|$)/,`${file} should use a JavaScript content type`);
     assert.ok(body.length>0,`${file} should have a non-empty body`);
   }
+});
+
+test('malformed percent encoding returns 400 without escaping the static handler',async t=>{
+  const server=http.createServer(createStaticHandler());
+  await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve)});t.after(()=>new Promise(resolve=>server.close(resolve)));
+  const response=await new Promise((resolve,reject)=>http.get(`http://127.0.0.1:${server.address().port}/%E0%A4%A`,resolve).once('error',reject));
+  response.resume();assert.equal(response.statusCode,400);
 });
