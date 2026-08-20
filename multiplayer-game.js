@@ -21,7 +21,7 @@
     if(message.type==='gameStarted'){
       const nextMatchId=message.matchId||message.lobby?.matchId,reconnecting=Boolean(currentMatchId&&nextMatchId===currentMatchId);multiplayerMode=true;if(!reconnecting)resetMatchRuntime();currentMatchId=nextMatchId;running=true;paused=true;document.getElementById('multiplayerWaiting').classList.add('hidden');pendingInputs=[];
     }
-    if(message.matchId&&currentMatchId&&message.matchId!==currentMatchId)return;
+    if(!SwarmSocketState.shouldAcceptMatchMessage(currentMatchId,message))return;
     if(message.type==='gameState'){if(message.state?.matchId!==currentMatchId)return;previous=state;state=message.state;receivedAt=performance.now();applyState()}
     if(message.type==='upgradeWaiting')document.getElementById('multiplayerWaiting').classList.remove('hidden');
     if(message.type==='levelResume'){endCooldownFreeze();serverPaused=false;pauseReason=null;paused=false;pendingInputs=[];keys.w=keys.a=keys.s=keys.d=false;document.getElementById('multiplayerWaiting').classList.add('hidden')}
