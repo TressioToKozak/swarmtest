@@ -24,3 +24,17 @@ test('multiplayer client binds menu controls without requiring crypto.randomUUID
   assert.equal(typeof element('createLobbyBtn').onclick,'function');
   element('multiplayerBtn').onclick();
 });
+
+test('late callbacks from a replaced browser socket cannot invalidate or publish control state',()=>{
+  const source=fs.readFileSync(require.resolve('../multiplayer.js'),'utf8'),elements=new Map(),timers=[],sockets=[],published=[];
+  const element=id=>elements.get(id)||elements.set(id,{id,classList:{add(){},remove(){},toggle(){}},querySelector(){return{innerHTML:''}},querySelectorAll(){return[]},focus(){},click(){},textContent:'',className:'',value:'',disabled:false}).get(id);
+  class FakeSocket{static OPEN=1;constructor(){this.readyState=0;sockets.push(this)}send(payload){this.sent=JSON.parse(payload)}close(){this.readyState=3}}
+  let handshake='idle',invalidations=0;
+  const channel={on(){},beginConnection(){handshake='pending'},publish(message){published.push(message.type);if(message.type==='helloAck')handshake='authenticated'},invalidate(){invalidations++;handshake='closed'},getHandshakeState:()=>handshake,getLastHelloAck:()=>null};
+  const context={window:{Achievements:{isComplete:()=>false}},document:{getElementById:element},localStorage:{getItem(){return null},setItem(){}},sessionStorage:{getItem(){return null},setItem(){},removeItem(){}},crypto:{getRandomValues(bytes){bytes.fill(3);return bytes}},Uint8Array,location:{protocol:'http:',host:'localhost'},WebSocket:FakeSocket,setTimeout(fn){timers.push(fn)},console,SwarmSocketState:{createControlChannel:()=>channel}};
+  vm.runInNewContext(source,context,{filename:'multiplayer.js'});
+  const a=sockets[0];a.readyState=1;a.onopen();a.onclose({code:1006});timers.shift()();
+  const b=sockets[1];b.readyState=1;b.onopen();b.onmessage({data:JSON.stringify({type:'helloAck',playerId:'p',reconnectToken:'t',connectionId:'b',connectionGeneration:2})});
+  const before=[...published];a.onmessage({data:JSON.stringify({type:'pauseState',paused:true,pauseReason:'manual'})});a.onclose({code:1006});
+  assert.equal(context.window.SwarmSocket.isOpen(),true);assert.equal(handshake,'authenticated');assert.equal(invalidations,1);assert.deepEqual(published,before);
+});
