@@ -5,17 +5,7 @@ const mapCtx = minimap.getContext('2d');
 const WORLD = { w: 3000, h: 2200 };
 const camera = { x: 0, y: 0 };
 let chosenMap=localStorage.getItem('swarmfall-map')||'ruins',MAP_SHAPE=SWARM_MAPS[chosenMap]?.shape||SWARM_MAPS.ruins.shape;
-const RUINS_TERRAIN = [
-  {type:'water', points:[[160,260],[480,180],[720,310],[650,560],[390,650],[130,520]]},
-  {type:'water', points:[[2180,1450],[2480,1320],[2800,1440],[2870,1760],[2650,1940],[2290,1840],[2110,1650]]},
-  {type:'water', points:[[1130,1660],[1370,1510],[1600,1600],[1660,1900],[1430,2050],[1160,1940]]},
-  {type:'wall', x:840,y:360,w:390,h:42}, {type:'wall',x:1190,y:360,w:42,h:290},
-  {type:'wall', x:1830,y:720,w:42,h:430}, {type:'wall',x:1830,y:1108,w:390,h:42},
-  {type:'wall', x:520,y:1220,w:430,h:42}, {type:'wall',x:910,y:1010,w:42,h:252},
-  {type:'rock',x:1530,y:470,r:92}, {type:'rock',x:2450,y:520,r:115},
-  {type:'rock',x:480,y:940,r:86}, {type:'rock',x:1530,y:1280,r:105},
-  {type:'rock',x:2520,y:1050,r:78}, {type:'rock',x:720,y:1790,r:120}
-];
+const RUINS_TERRAIN = SWARM_SHARED_MAPS.ruins.terrain;
 let terrain=RUINS_TERRAIN;
 function tracePolygon(context, points){context.beginPath();points.forEach(([x,y],i)=>i?context.lineTo(x,y):context.moveTo(x,y));context.closePath()}
 function pointInPolygon(x,y,points){let inside=false;for(let i=0,j=points.length-1;i<points.length;j=i++){const [xi,yi]=points[i],[xj,yj]=points[j];if(((yi>y)!==(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi)+xi))inside=!inside}return inside}
