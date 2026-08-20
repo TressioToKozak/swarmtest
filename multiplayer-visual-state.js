@@ -11,7 +11,9 @@
   function canParticipateInUpgrade(player){return Boolean(player?.alive)}
   function teamHudData(players,localId){return players.map(player=>{const maxHp=Math.max(1,Number(player.maxHp)||1),alive=player.alive!==false,hp=alive?Math.max(0,Number(player.hp)||0):0;return{id:player.id,name:player.name||player.character||'GRACZ',character:player.character||'scout',hp,maxHp,ratio:alive?Math.min(1,hp/maxHp):0,status:alive?'ALIVE':'DEAD',local:player.id===localId}})}
   function gameplayEnabled({isDead=false,serverPaused=false,localMenuOpen=false}={}){return!isDead&&!serverPaused&&!localMenuOpen}
+  function shouldQueueInput(enabled,isDead){return Boolean(enabled&&!isDead)}
+  function pauseUiState(info={},playerId){const requested=Math.max(0,info.requested||0),required=Math.max(0,info.required||0),localRequested=Array.isArray(info.requesterIds)&&info.requesterIds.includes(playerId);return{localRequested,showModal:Boolean(info.paused||localRequested),showStatus:!info.paused&&!localRequested&&requested>0,text:`PAUSE REQUEST · ${requested} / ${required}`}}
   function classifyPlayers(players,authoritativePlayerId){const local=players.filter(player=>player.id===authoritativePlayerId),remote=players.filter(player=>player.id!==authoritativePlayerId);return{local:local.length===1?local[0]:null,remote,valid:local.length===1&&!remote.some(player=>player.id===authoritativePlayerId)}}
   function resumeSequences(currentInput,currentAbility,ack={}){return{inputSeq:Math.max(currentInput,ack.lastProcessedInputSeq||0),abilityInputSeq:Math.max(currentAbility,ack.lastAbilityInputSeq||0)}}
-  return{update,sample,updateEntities,sampleEntities,damageFlash,lerpAngle,exponentialAlpha,cameraFollowStep,selectSpectatorTarget,canParticipateInUpgrade,teamHudData,gameplayEnabled,classifyPlayers,resumeSequences}
+  return{update,sample,updateEntities,sampleEntities,damageFlash,lerpAngle,exponentialAlpha,cameraFollowStep,selectSpectatorTarget,canParticipateInUpgrade,teamHudData,gameplayEnabled,shouldQueueInput,pauseUiState,classifyPlayers,resumeSequences}
 });
