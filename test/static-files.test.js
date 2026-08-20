@@ -2,7 +2,7 @@
 const test=require('node:test'),assert=require('node:assert/strict'),http=require('node:http');
 const {createStaticHandler,publicFiles}=require('../server');
 
-const multiplayerRuntimeFiles=['multiplayer-socket-state.js','multiplayer-client-utils.js','multiplayer.js','multiplayer-visual-state.js','multiplayer-game.js'];
+const multiplayerRuntimeFiles=['shared-collision.js','multiplayer-socket-state.js','multiplayer-client-utils.js','multiplayer.js','multiplayer-visual-state.js','multiplayer-game.js'];
 
 test('HTTP server serves every multiplayer runtime JavaScript file',async t=>{
   const server=http.createServer(createStaticHandler());
