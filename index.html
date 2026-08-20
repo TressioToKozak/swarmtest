@@ -72,8 +72,22 @@
             <button type="button" id="statsBtn" class="secondary-btn"><span class="menu-icon icon-stats"></span><b>STATYSTYKI</b></button>
             <button type="button" id="achievementsBtn" class="secondary-btn"><span class="menu-icon icon-achievements"></span><b>OSIĄGNIĘCIA</b></button>
             <button type="button" id="settingsBtn" class="secondary-btn"><span class="menu-icon icon-settings"></span><b>OPCJE</b></button>
-            <button type="button" class="secondary-btn locked-btn" disabled><span class="menu-icon icon-lock"></span><b>MULTIPLAYER</b><small>WKRÓTCE</small></button>
+            <button type="button" id="multiplayerBtn" class="secondary-btn wide-button"><span class="menu-icon icon-multiplayer"></span><b>MULTIPLAYER</b><small>GRAJ ZE ZNAJOMYMI</small></button>
           </div>
+        </div>
+      </section>
+
+      <section class="modal multiplayer-modal hidden" id="multiplayerModal" aria-hidden="true">
+        <div class="instruction-panel multiplayer-panel">
+          <div class="eyebrow">MULTIPLAYER</div><h2>GRAJ <em>RAZEM</em></h2>
+          <p>Stwórz prywatne lobby albo dołącz do znajomego za pomocą kodu.</p>
+          <div class="multiplayer-actions" id="multiplayerActions">
+            <button type="button" id="createLobbyBtn" class="multiplayer-card"><span class="lobby-card-icon">＋</span><span><b>STWÓRZ LOBBY</b><small>Wygeneruj kod i zaproś graczy</small></span></button>
+            <button type="button" id="showJoinLobbyBtn" class="multiplayer-card secondary-btn"><span class="lobby-card-icon">→</span><span><b>DOŁĄCZ DO LOBBY</b><small>Wpisz kod otrzymany od gospodarza</small></span></button>
+          </div>
+          <form class="join-lobby-form hidden" id="joinLobbyForm"><label for="lobbyCodeInput">KOD LOBBY</label><div><input id="lobbyCodeInput" type="text" maxlength="6" autocomplete="off" spellcheck="false" placeholder="NP. A7K2Q9" aria-describedby="lobbyMessage"><button type="submit">DOŁĄCZ</button></div><p id="lobbyMessage" class="lobby-message" aria-live="polite"></p></form>
+          <div class="lobby-room hidden" id="lobbyRoom"><small id="lobbyRole">TWOJE LOBBY</small><strong id="activeLobbyCode">------</strong><button type="button" id="copyLobbyCodeBtn" class="secondary-btn">KOPIUJ KOD</button><p>Udostępnij kod znajomym. Gracze pojawią się tutaj po dołączeniu.</p><div class="lobby-options"><fieldset id="lobbyMapPicker"><legend>MAPA · WYBIERA GOSPODARZ</legend><div></div></fieldset><fieldset id="lobbyCharacterPicker"><legend>TWOJA POSTAĆ</legend><div></div></fieldset></div><div class="lobby-players"><span>GRACZE W LOBBY</span><b id="lobbyPlayerCount">1 / 4</b></div><ul id="lobbyPlayerList"></ul><button type="button" id="lobbyReadyBtn">GOTOWY</button><button type="button" id="lobbyStartBtn" class="hidden" disabled>START GRY</button></div>
+          <button type="button" id="multiplayerBackBtn" class="secondary-btn">← WRÓĆ DO MENU</button>
         </div>
       </section>
 
@@ -170,13 +184,17 @@
         <p id="endStats"></p><button id="restartBtn">SPRÓBUJ PONOWNIE <span>↻</span></button>
       </section>
     </main>
+    <script src="shared-game-data.js?v=1"></script>
+    <script src="shared-map-data.js?v=1"></script>
     <script src="enemy-data.js?v=3"></script>
-    <script src="map-data.js?v=2"></script>
+    <script src="map-data.js?v=3"></script>
     <script src="enemy-visuals.js?v=3"></script>
     <script src="feedback.js?v=2"></script>
     <script src="achievements.js?v=2"></script>
     <script src="upgrade-data.js?v=2"></script>
     <script src="settings-data.js?v=1"></script>
     <script src="game.js?v=27"></script>
+    <script src="multiplayer.js?v=2"></script>
+    <script src="multiplayer-game.js?v=2"></script>
   </body>
 </html>
