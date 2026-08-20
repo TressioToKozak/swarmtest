@@ -4,5 +4,7 @@
   function updateEntities(cache,entities,receivedAt){const seen=new Set();for(const entity of entities){seen.add(entity.id);let visual=cache.get(entity.id);if(!visual){visual={x:entity.x,y:entity.y,fromX:entity.x,fromY:entity.y,toX:entity.x,toY:entity.y,lastAt:receivedAt};cache.set(entity.id,visual)}visual.fromX=visual.x;visual.fromY=visual.y;visual.toX=entity.x;visual.toY=entity.y;visual.lastAt=receivedAt;visual.entity=entity}for(const id of cache.keys())if(!seen.has(id))cache.delete(id);return cache}
   function sampleEntities(cache,now,interval=72){const result=[];for(const visual of cache.values()){const alpha=Math.max(0,Math.min(1,(now-visual.lastAt)/interval));visual.x=visual.fromX+(visual.toX-visual.fromX)*alpha;visual.y=visual.fromY+(visual.toY-visual.fromY)*alpha;result.push({...visual.entity,x:visual.x,y:visual.y})}return result}
   function damageFlash(previous,current){return previous&&current&&previous.hp>current.hp?0.12:0}
-  return{update,sample,updateEntities,sampleEntities,damageFlash}
+  function selectSpectatorTarget(players,playerId,origin={x:0,y:0}){const living=players.filter(player=>player.id!==playerId&&player.alive!==false);let target=null,distance=Infinity;for(const player of living){const next=Math.hypot(player.x-origin.x,player.y-origin.y);if(next<distance){distance=next;target=player}}return target}
+  function gameplayEnabled({isDead=false,serverPaused=false,localMenuOpen=false}={}){return!isDead&&!serverPaused&&!localMenuOpen}
+  return{update,sample,updateEntities,sampleEntities,damageFlash,selectSpectatorTarget,gameplayEnabled}
 });
