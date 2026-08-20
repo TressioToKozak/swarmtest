@@ -17,3 +17,10 @@ test('HTTP server serves every multiplayer runtime JavaScript file',async t=>{
     assert.ok(body.length>0,`${file} should have a non-empty body`);
   }
 });
+
+test('malformed percent encoding returns 400 without escaping the static handler',async t=>{
+  const server=http.createServer(createStaticHandler());
+  await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve)});t.after(()=>new Promise(resolve=>server.close(resolve)));
+  const response=await new Promise((resolve,reject)=>http.get(`http://127.0.0.1:${server.address().port}/%E0%A4%A`,resolve).once('error',reject));
+  response.resume();assert.equal(response.statusCode,400);
+});
