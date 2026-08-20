@@ -10,16 +10,20 @@
   function unlockedCharacters(){try{return new Set(['scout',...JSON.parse(localStorage.getItem('swarmfall-unlocked')||'[]')])}catch{return new Set(['scout'])}}
   function characterName(id){return{scout:'Zwiadowca',warrior:'Wojownik',druid:'Druid'}[id]||id}
   function mapName(id){return id==='toxic'?'Toksyczne pustkowie':'Zalane ruiny'}
+  function copyLobbyPreviews(){
+    byId('lobbyMapPicker').querySelectorAll('canvas[data-map-preview]').forEach(canvas=>{const source=byId(canvas.dataset.mapPreview==='toxic'?'toxicMapPreview':'mapPreviewCanvas'),context=canvas.getContext('2d');context.clearRect(0,0,canvas.width,canvas.height);context.drawImage(source,0,0,canvas.width,canvas.height)});
+    byId('lobbyCharacterPicker').querySelectorAll('canvas[data-character-preview]').forEach(canvas=>{const source=byId(`${canvas.dataset.characterPreview}Preview`),context=canvas.getContext('2d');context.clearRect(0,0,canvas.width,canvas.height);context.drawImage(source,0,0,canvas.width,canvas.height)})
+  }
   function setView(view){actions.classList.toggle('hidden',view!=='actions');joinForm.classList.toggle('hidden',view!=='join');room.classList.toggle('hidden',view!=='room');message.textContent='';message.className='lobby-message'}
   function currentPlayer(lobby){return lobby?.players.find(player=>player.id===sessionId)}
   function updateLobby(change){if(!currentCode)return;const lobbies=readLobbies(),lobby=lobbies[currentCode];if(!lobby)return;change(lobby);lobby.updatedAt=Date.now();writeLobbies(lobbies);renderRoom()}
   function renderPickers(lobby,me){
     const mapIds=['ruins',...(window.Achievements?.isComplete('map_1')?['toxic']:[])];
     byId('lobbyMapPicker').classList.toggle('guest-picker',!isHost);
-    byId('lobbyMapPicker').querySelector('div').innerHTML=(isHost?mapIds:[lobby.map]).map(id=>`<button type="button" data-lobby-map="${id}" class="visual-pick map-pick ${id} ${lobby.map===id?'selected':''}" ${isHost?'':'disabled'}><span class="pick-preview"><i></i><i></i><i></i></span><b>${mapName(id)}</b><small>${id==='toxic'?'MGŁA · TRUCIZNA':'WODA · RUINY'}</small></button>`).join('');
+    byId('lobbyMapPicker').querySelector('div').innerHTML=(isHost?mapIds:[lobby.map]).map(id=>`<button type="button" data-lobby-map="${id}" class="visual-pick map-pick ${id} ${lobby.map===id?'selected':''}" ${isHost?'':'disabled'}><canvas class="pick-preview" data-map-preview="${id}" width="320" height="150"></canvas><b>${mapName(id)}</b><small>${id==='toxic'?'MGŁA · TRUCIZNA':'WODA · RUINY'}</small></button>`).join('');
     byId('lobbyMapPicker').querySelectorAll('[data-lobby-map]').forEach(button=>button.onclick=()=>updateLobby(value=>{value.map=button.dataset.lobbyMap;value.players.forEach(player=>{if(!player.host)player.ready=false})}));
-    byId('lobbyCharacterPicker').querySelector('div').innerHTML=[...unlockedCharacters()].map(id=>`<button type="button" data-lobby-character="${id}" class="visual-pick character-pick ${id} ${me.character===id?'selected':''}"><span class="pick-preview"><i></i><i></i><i></i></span><b>${characterName(id)}</b><small>${id==='warrior'?'WALKA WRĘCZ':id==='druid'?'WSPARCIE':'DYSTANS'}</small></button>`).join('');
-    byId('lobbyCharacterPicker').querySelectorAll('[data-lobby-character]').forEach(button=>button.onclick=()=>updateLobby(value=>{const player=currentPlayer(value);player.character=button.dataset.lobbyCharacter;if(!player.host)player.ready=false}));
+    byId('lobbyCharacterPicker').querySelector('div').innerHTML=[...unlockedCharacters()].map(id=>`<button type="button" data-lobby-character="${id}" class="visual-pick character-pick ${id} ${me.character===id?'selected':''}"><canvas class="pick-preview" data-character-preview="${id}" width="320" height="150"></canvas><b>${characterName(id)}</b><small>${id==='warrior'?'WALKA WRĘCZ':id==='druid'?'WSPARCIE':'DYSTANS'}</small></button>`).join('');
+    byId('lobbyCharacterPicker').querySelectorAll('[data-lobby-character]').forEach(button=>button.onclick=()=>updateLobby(value=>{const player=currentPlayer(value);player.character=button.dataset.lobbyCharacter;if(!player.host)player.ready=false}));copyLobbyPreviews();
   }
   function launchGame(lobby){if(gameStarting)return;gameStarting=true;sessionStorage.setItem('swarmfall-lobby-map',lobby.map);sessionStorage.setItem('swarmfall-multiplayer-session',JSON.stringify({code:currentCode,playerId:sessionId,host:isHost}));localStorage.setItem('swarmfall-map',lobby.map);localStorage.setItem('swarmfall-character',currentPlayer(lobby)?.character||'scout');currentCode='';modal.classList.add('hidden');byId('startBtn').click()}
   function renderRoom(){
