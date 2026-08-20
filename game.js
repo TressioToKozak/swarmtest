@@ -58,7 +58,7 @@ let crates=[
   {x:1080,y:790},{x:1730,y:560},{x:2620,y:1260},{x:1740,y:1850},{x:420,y:1510}
 ].map((c,i)=>({...c,id:i,hp:28,max:28,opened:false,hit:0}));
 function setupMap(id){
-  chosenMap=id==='toxic'&&Achievements.isComplete('map_1')?'toxic':'ruins';MAP_SHAPE=SWARM_MAPS[chosenMap].shape;BOSS_DATA=chosenMap==='toxic'?SWARM_TOXIC_BOSSES:SWARM_BOSSES;localStorage.setItem('swarmfall-map',chosenMap);
+  const lobbyMap=sessionStorage.getItem('swarmfall-lobby-map');chosenMap=id==='toxic'&&(Achievements.isComplete('map_1')||lobbyMap==='toxic')?'toxic':'ruins';MAP_SHAPE=SWARM_MAPS[chosenMap].shape;BOSS_DATA=chosenMap==='toxic'?SWARM_TOXIC_BOSSES:SWARM_BOSSES;localStorage.setItem('swarmfall-map',chosenMap);sessionStorage.removeItem('swarmfall-lobby-map');
   if(chosenMap==='toxic'){
     terrain=SWARM_MAPS.toxic.terrain;toxicZones=SWARM_MAPS.toxic.toxicZones;fogZones=SWARM_MAPS.toxic.fogZones;
     crates=SWARM_MAPS.toxic.crates.map((c,i)=>({...c,id:i,hp:34,max:34,opened:false,hit:0}));
