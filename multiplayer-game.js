@@ -1,14 +1,16 @@
 (() => {
-  let session=null,state=null,previous=null,receivedAt=0,sendClock=0,lastLevelRound=0,lastWaveSeq=0,inputSeq=0,abilityInputSeq=0,serverOffset=0,serverPaused=false,localMenuOpen=false,isDead=false,isSpectator=false;
+  let session=null,authoritativePlayerId=null,connectionGeneration=0,state=null,previous=null,receivedAt=0,sendClock=0,lastLevelRound=0,lastWaveSeq=0,inputSeq=0,abilityInputSeq=0,serverOffset=0,serverPaused=false,localMenuOpen=false,isDead=false,isSpectator=false;
   let remotePlayers=[],effectiveSpeed=0,remoteVisuals=new Map(),localAttackSeq=0,localAbilitySeq=0,pendingInputs=[];
   let previousEnemies=new Map(),enemyVisuals=new Map(),bulletVisuals=new Map();
   const cooldownElements={};
   try{session=JSON.parse(sessionStorage.getItem('swarmfall-multiplayer-session')||'null')}catch{}
   const socket=()=>window.SwarmSocket;
   function getSession(){if(session)return session;try{session=JSON.parse(sessionStorage.getItem('swarmfall-multiplayer-session')||'null')}catch{}return session}
-  function isActive(){return Boolean(getSession()&&running&&socket()?.isOpen())}
+  function isActive(){return Boolean(getSession()&&authoritativePlayerId&&running&&socket()?.isOpen())}
   function accept(message){
-    if(!getSession())return;
+    if(message.type==='helloAck'){authoritativePlayerId=message.playerId;connectionGeneration=message.connectionGeneration||0;const sequences=SwarmRemoteVisuals.resumeSequences(inputSeq,abilityInputSeq,message);inputSeq=sequences.inputSeq;abilityInputSeq=sequences.abilityInputSeq;pendingInputs=pendingInputs.filter(input=>input.seq>inputSeq);remoteVisuals.clear();enemyVisuals.clear();bulletVisuals.clear();session=getSession();return}
+    if(message.type==='resumeRejected'){authoritativePlayerId=null;session=null;pendingInputs=[];return}
+    if(!getSession()||!authoritativePlayerId)return;
     if(message.type==='gameStarted'){
       document.getElementById('multiplayerWaiting').classList.add('hidden');state=null;previous=null;lastLevelRound=0;lastWaveSeq=0;
       remoteVisuals.clear();remotePlayers=[];previousEnemies.clear();enemyVisuals.clear();bulletVisuals.clear();localAttackSeq=0;localAbilitySeq=0;
@@ -33,9 +35,9 @@
       const old=previous?.players?.find(p=>p.id===current.id);
       if(old&&(current.abilitySeq||0)!==(old.abilitySeq||0))playMultiplayerAbilityVisual(current.character,current.lastAbility,current,old);
     }
-    const mine=state.players.find(p=>p.id===session.playerId);
+    const classification=SwarmRemoteVisuals.classifyPlayers(state.players,authoritativePlayerId),mine=classification.local;
     if(mine){
-      isDead=mine.alive===false;isSpectator=isDead&&state.players.some(other=>other.id!==mine.id&&other.alive!==false);if(isDead)pendingInputs=[];
+      isDead=mine.alive===false;isSpectator=isDead&&state.players.some(other=>other.id!==authoritativePlayerId&&other.alive!==false);if(isDead)pendingInputs=[];
       if(!isDead){pendingInputs=pendingInputs.filter(input=>input.seq>(mine.lastProcessedInputSeq||0));let targetX=mine.x,targetY=mine.y;
         for(const input of pendingInputs){const dx=(input.right?1:0)-(input.left?1:0),dy=(input.down?1:0)-(input.up?1:0),length=Math.hypot(dx,dy)||1,speed=mine.speed||effectiveSpeed||characterDefs[chosenCharacter].speed,nx=targetX+dx/length*speed/25,ny=targetY+dy/length*speed/25;if(!blocked(nx,targetY,player.r))targetX=nx;if(!blocked(targetX,ny,player.r))targetY=ny}
         const error=Math.hypot(player.x-targetX,player.y-targetY);if(error>90){player.x=targetX;player.y=targetY}else{player.x+=(targetX-player.x)*.2;player.y+=(targetY-player.y)*.2}}
@@ -45,11 +47,11 @@
       if(mine.cooldowns){player.serverCooldowns=mine.cooldowns}if(mine.items)applyAuthoritativeBuild(mine)
     }
     previousEnemies=new Map((previous?.enemies||[]).map(e=>[e.id,e]));
-    remotePlayers=state.players.filter(p=>p.id!==session.playerId);SwarmRemoteVisuals.update(remoteVisuals,remotePlayers,receivedAt);
+    remotePlayers=classification.remote;if(!classification.valid){authoritativePlayerId=null;pendingInputs=[];console.error('Multiplayer ownership invariant failed; input disabled.');return}SwarmRemoteVisuals.update(remoteVisuals,remotePlayers,receivedAt);
     SwarmRemoteVisuals.updateEntities(enemyVisuals,state.enemies,receivedAt);SwarmRemoteVisuals.updateEntities(bulletVisuals,state.bullets,receivedAt);
     enemies=state.enemies.map(e=>({...e,type:e.type||'melee',attackCd:1,chargeCd:1,phase:0,hit:SwarmRemoteVisuals.damageFlash(previousEnemies.get(e.id),e)}));
     bullets=state.bullets.map(b=>({...b,r:b.r||4,kind:b.kind||'scoutBullet'}));enemyBullets=(state.enemyBullets||[]).map(b=>({...b,r:b.r||6}));orbs=(state.orbs||[]).map(o=>({...o,r:5,vx:0,vy:0}));loot=state.loot||[];crates=state.crates||crates;
-    const watched=isSpectator?SwarmRemoteVisuals.selectSpectatorTarget(state.players,session.playerId,mine||player):null,cameraTarget=watched||player;camera.x=Math.max(0,Math.min(WORLD.w-W,cameraTarget.x-W/2));camera.y=Math.max(0,Math.min(WORLD.h-H,cameraTarget.y-H/2));updateUI();
+    const watched=isSpectator?SwarmRemoteVisuals.selectSpectatorTarget(state.players,authoritativePlayerId,mine||player):null,cameraTarget=watched||player;camera.x=Math.max(0,Math.min(WORLD.w-W,cameraTarget.x-W/2));camera.y=Math.max(0,Math.min(WORLD.h-H,cameraTarget.y-H/2));updateUI();
   }
   function updateVisualEffects(dt){
     player.attackAnim=Math.max(0,(player.attackAnim||0)-dt);player.teleportAnim=Math.max(0,(player.teleportAnim||0)-dt);player.skillAnimTime=Math.max(0,(player.skillAnimTime||0)-dt);
@@ -64,7 +66,7 @@
     const gameplayEnabled=SwarmRemoteVisuals.gameplayEnabled({isDead,serverPaused,localMenuOpen}),estimatedServerNow=performance.now()+serverOffset,cooldowns=player.serverCooldowns;if(cooldowns){skills.q.cd=Math.max(0,(cooldowns.qReadyAt-estimatedServerNow)/1000);skills.e.cd=Math.max(0,(cooldowns.eReadyAt-estimatedServerNow)/1000);skills.r.cd=Math.max(0,(cooldowns.rReadyAt-estimatedServerNow)/1000);updateCooldownUI()}
     if(sendClock<=0){const aim=Math.atan2(mouse.y+camera.y-player.y,mouse.x+camera.x-player.x),neutral=!gameplayEnabled,input={up:neutral?false:!!keys.w,down:neutral?false:!!keys.s,left:neutral?false:!!keys.a,right:neutral?false:!!keys.d,aim,seq:++inputSeq};if(!isDead){pendingInputs.push(input);if(pendingInputs.length>32)pendingInputs.shift()}socket().send('playerInput',{...input,inputSeq:input.seq});sendClock=1/25}
     if(gameplayEnabled){const dx=(keys.d?1:0)-(keys.a?1:0),dy=(keys.s?1:0)-(keys.w?1:0),len=Math.hypot(dx,dy)||1,speed=effectiveSpeed||characterDefs[chosenCharacter].speed,nx=player.x+dx/len*speed*dt,ny=player.y+dy/len*speed*dt;if(!blocked(nx,player.y,player.r))player.x=nx;if(!blocked(player.x,ny,player.r))player.y=ny}
-    if(state){const now=performance.now();remotePlayers=[...remoteVisuals.values()].map(visual=>SwarmRemoteVisuals.sample(visual,now,72));enemies=SwarmRemoteVisuals.sampleEntities(enemyVisuals,now).map(current=>({...current,type:current.type||'melee',attackCd:1,chargeCd:1,phase:0,hit:SwarmRemoteVisuals.damageFlash(previousEnemies.get(current.id),current)}));bullets=SwarmRemoteVisuals.sampleEntities(bulletVisuals,now).map(current=>({...current,r:current.r||4,kind:current.kind||'scoutBullet'}));if(isSpectator){const watched=SwarmRemoteVisuals.selectSpectatorTarget(remotePlayers,session.playerId,player);if(watched){const targetX=Math.max(0,Math.min(WORLD.w-W,watched.x-W/2)),targetY=Math.max(0,Math.min(WORLD.h-H,watched.y-H/2));camera.x+=(targetX-camera.x)*Math.min(1,dt*8);camera.y+=(targetY-camera.y)*Math.min(1,dt*8)}}}
+    if(state){const now=performance.now();remotePlayers=[...remoteVisuals.values()].map(visual=>SwarmRemoteVisuals.sample(visual,now,72));enemies=SwarmRemoteVisuals.sampleEntities(enemyVisuals,now).map(current=>({...current,type:current.type||'melee',attackCd:1,chargeCd:1,phase:0,hit:SwarmRemoteVisuals.damageFlash(previousEnemies.get(current.id),current)}));bullets=SwarmRemoteVisuals.sampleEntities(bulletVisuals,now).map(current=>({...current,r:current.r||4,kind:current.kind||'scoutBullet'}));if(isSpectator){const watched=SwarmRemoteVisuals.selectSpectatorTarget(remotePlayers,authoritativePlayerId,player);if(watched){const targetX=Math.max(0,Math.min(WORLD.w-W,watched.x-W/2)),targetY=Math.max(0,Math.min(WORLD.h-H,watched.y-H/2));camera.x+=(targetX-camera.x)*Math.min(1,dt*8);camera.y+=(targetY-camera.y)*Math.min(1,dt*8)}}}
   }
   function levelShown(){}
   function pressAbility(ability){if(isActive()&&SwarmRemoteVisuals.gameplayEnabled({isDead,serverPaused,localMenuOpen})){const aim=Math.atan2(mouse.y+camera.y-player.y,mouse.x+camera.x-player.x);socket().send('abilityPress',{ability,aim,seq:++abilityInputSeq})}}

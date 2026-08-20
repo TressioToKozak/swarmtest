@@ -6,5 +6,7 @@
   function damageFlash(previous,current){return previous&&current&&previous.hp>current.hp?0.12:0}
   function selectSpectatorTarget(players,playerId,origin={x:0,y:0}){const living=players.filter(player=>player.id!==playerId&&player.alive!==false);let target=null,distance=Infinity;for(const player of living){const next=Math.hypot(player.x-origin.x,player.y-origin.y);if(next<distance){distance=next;target=player}}return target}
   function gameplayEnabled({isDead=false,serverPaused=false,localMenuOpen=false}={}){return!isDead&&!serverPaused&&!localMenuOpen}
-  return{update,sample,updateEntities,sampleEntities,damageFlash,selectSpectatorTarget,gameplayEnabled}
+  function classifyPlayers(players,authoritativePlayerId){const local=players.filter(player=>player.id===authoritativePlayerId),remote=players.filter(player=>player.id!==authoritativePlayerId);return{local:local.length===1?local[0]:null,remote,valid:local.length===1&&!remote.some(player=>player.id===authoritativePlayerId)}}
+  function resumeSequences(currentInput,currentAbility,ack={}){return{inputSeq:Math.max(currentInput,ack.lastProcessedInputSeq||0),abilityInputSeq:Math.max(currentAbility,ack.lastAbilityInputSeq||0)}}
+  return{update,sample,updateEntities,sampleEntities,damageFlash,selectSpectatorTarget,gameplayEnabled,classifyPlayers,resumeSequences}
 });
