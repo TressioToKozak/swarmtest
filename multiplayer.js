@@ -16,12 +16,12 @@
   function renderPickers(lobby,me){
     const mapIds=['ruins',...(window.Achievements?.isComplete('map_1')?['toxic']:[])];
     byId('lobbyMapPicker').classList.toggle('guest-picker',!isHost);
-    byId('lobbyMapPicker').querySelector('div').innerHTML=(isHost?mapIds:[lobby.map]).map(id=>`<button type="button" data-lobby-map="${id}" class="${lobby.map===id?'selected':''}" ${isHost?'':'disabled'}>${mapName(id)}</button>`).join('');
+    byId('lobbyMapPicker').querySelector('div').innerHTML=(isHost?mapIds:[lobby.map]).map(id=>`<button type="button" data-lobby-map="${id}" class="visual-pick map-pick ${id} ${lobby.map===id?'selected':''}" ${isHost?'':'disabled'}><span class="pick-preview"><i></i><i></i><i></i></span><b>${mapName(id)}</b><small>${id==='toxic'?'MGŁA · TRUCIZNA':'WODA · RUINY'}</small></button>`).join('');
     byId('lobbyMapPicker').querySelectorAll('[data-lobby-map]').forEach(button=>button.onclick=()=>updateLobby(value=>{value.map=button.dataset.lobbyMap;value.players.forEach(player=>{if(!player.host)player.ready=false})}));
-    byId('lobbyCharacterPicker').querySelector('div').innerHTML=[...unlockedCharacters()].map(id=>`<button type="button" data-lobby-character="${id}" class="${me.character===id?'selected':''}">${characterName(id)}</button>`).join('');
+    byId('lobbyCharacterPicker').querySelector('div').innerHTML=[...unlockedCharacters()].map(id=>`<button type="button" data-lobby-character="${id}" class="visual-pick character-pick ${id} ${me.character===id?'selected':''}"><span class="pick-preview"><i></i><i></i><i></i></span><b>${characterName(id)}</b><small>${id==='warrior'?'WALKA WRĘCZ':id==='druid'?'WSPARCIE':'DYSTANS'}</small></button>`).join('');
     byId('lobbyCharacterPicker').querySelectorAll('[data-lobby-character]').forEach(button=>button.onclick=()=>updateLobby(value=>{const player=currentPlayer(value);player.character=button.dataset.lobbyCharacter;if(!player.host)player.ready=false}));
   }
-  function launchGame(lobby){if(gameStarting)return;gameStarting=true;sessionStorage.setItem('swarmfall-lobby-map',lobby.map);localStorage.setItem('swarmfall-map',lobby.map);localStorage.setItem('swarmfall-character',currentPlayer(lobby)?.character||'scout');currentCode='';modal.classList.add('hidden');byId('startBtn').click()}
+  function launchGame(lobby){if(gameStarting)return;gameStarting=true;sessionStorage.setItem('swarmfall-lobby-map',lobby.map);sessionStorage.setItem('swarmfall-multiplayer-session',JSON.stringify({code:currentCode,playerId:sessionId,host:isHost}));localStorage.setItem('swarmfall-map',lobby.map);localStorage.setItem('swarmfall-character',currentPlayer(lobby)?.character||'scout');currentCode='';modal.classList.add('hidden');byId('startBtn').click()}
   function renderRoom(){
     if(!currentCode)return;const lobby=readLobbies()[currentCode];
     if(!lobby){currentCode='';isHost=false;setView('join');message.textContent='Lobby zostało zamknięte.';message.classList.add('error');return}
