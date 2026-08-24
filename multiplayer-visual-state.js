@@ -17,7 +17,9 @@
   function singleplayerSimulationAllowed(multiplayerMode){return!multiplayerMode}
   function canTogglePauseMenu({upgradePaused=false,pauseReason=null,levelModalOpen=false}={}){return!upgradePaused&&pauseReason!=='upgrade'&&!levelModalOpen}
   function cooldownFreezeShift(startedAt,now){return startedAt?Math.max(0,now-startedAt):0}
+  function setLocalMenuLayer(pauseModal,open){if(!pauseModal?.classList)return false;pauseModal.classList.toggle('multiplayer-menu-open',Boolean(open));pauseModal.classList.toggle('hidden',!open);return Boolean(open)}
+  function localMenuPresentation(globalPause=false){return{resume:'WRÓĆ DO GRY',quit:'OPUŚĆ MULTIPLAYER',eyebrow:globalPause?'MULTIPLAYER · PAUZA GLOBALNA':'MULTIPLAYER · MENU LOKALNE',title:globalPause?'GRA WSTRZYMANA':'MENU GRACZA'}}
   function classifyPlayers(players,authoritativePlayerId){const local=players.filter(player=>player.id===authoritativePlayerId),remote=players.filter(player=>player.id!==authoritativePlayerId);return{local:local.length===1?local[0]:null,remote,valid:local.length===1&&!remote.some(player=>player.id===authoritativePlayerId)}}
   function resumeSequences(currentInput,currentAbility,ack={}){return{inputSeq:Math.max(currentInput,ack.lastProcessedInputSeq||0),abilityInputSeq:Math.max(currentAbility,ack.lastAbilityInputSeq||0)}}
-  return{update,sample,updateEntities,sampleEntities,damageFlash,lerpAngle,exponentialAlpha,cameraFollowStep,selectSpectatorTarget,canParticipateInUpgrade,teamHudData,gameplayEnabled,shouldQueueInput,pauseUiState,upgradePauseUiState,singleplayerSimulationAllowed,canTogglePauseMenu,cooldownFreezeShift,classifyPlayers,resumeSequences}
+  return{update,sample,updateEntities,sampleEntities,damageFlash,lerpAngle,exponentialAlpha,cameraFollowStep,selectSpectatorTarget,canParticipateInUpgrade,teamHudData,gameplayEnabled,shouldQueueInput,pauseUiState,upgradePauseUiState,singleplayerSimulationAllowed,canTogglePauseMenu,cooldownFreezeShift,setLocalMenuLayer,localMenuPresentation,classifyPlayers,resumeSequences}
 });
