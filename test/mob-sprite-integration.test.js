@@ -11,6 +11,20 @@ test('mob sprite sheets retain the expected six-frame source dimensions',()=>{
   for(const animation of ['explosion','explosion_radius'])assert.deepEqual(pngSize(`assets/mobs/exploder/${animation}.png`),[2304,384]);
 });
 
+test('custom toxic-map mobs and all boss assets retain their authored dimensions',()=>{
+  for(const type of ['melee','toxic','trapper'])for(const animation of ['move','attack'])assert.deepEqual(pngSize(`assets/mobs/${type}/${animation}.png`),[768,128]);
+  assert.deepEqual(pngSize('assets/mobs/toxic/poison_cloud.png'),[2304,384]);
+  assert.deepEqual(pngSize('assets/mobs/trapper/trap.png'),[768,128]);
+  assert.deepEqual(pngSize('assets/mobs/trapper/trap_trigger.png'),[2304,384]);
+  const bosses={boss_titan:['charge','slam_radius'],boss_warden:['projectile'],boss_void:['projectile','void_ring'],toxic_boss_spore:['spore_cloud'],toxic_boss_fog:['projectile','fog_cloud'],toxic_boss_core:['projectile','trap','trap_trigger']};
+  for(const [type,effects] of Object.entries(bosses)){
+    const map=type.startsWith('toxic_')?'toxic':'ruins',base=`assets/bosses/${map}/${type}`;
+    for(const animation of ['move','attack'])assert.deepEqual(pngSize(`${base}/${animation}.png`),[1536,256]);
+    for(const effect of effects){const size=effect==='projectile'?[384,64]:effect==='trap'?[768,128]:effect==='charge'?[1536,256]:[2304,384];assert.deepEqual(pngSize(`${base}/${effect}.png`),size)}
+  }
+  for(const name of ['nightmare_projectile','nightmare_cloud'])assert.deepEqual(pngSize(`assets/bosses/common/${name}.png`),name.endsWith('projectile')?[384,64]:[2304,384]);
+});
+
 test('sprite integration preserves direction, timing, radius and procedural fallback contracts',()=>{
   const visuals=fs.readFileSync('enemy-visuals.js','utf8'),game=fs.readFileSync('game.js','utf8'),server=fs.readFileSync('server.js','utf8');
   assert.match(visuals,/ENEMY_SPRITE_ANGLE_OFFSET=0/);
@@ -23,4 +37,9 @@ test('sprite integration preserves direction, timing, radius and procedural fall
   assert.match(server,/kind:'shooterBullet'/);
   assert.match(visuals,/if\(drawMobSprite\(ctx,e,time,hit\)\)return true/);
   assert.match(visuals,/else if\(e\.type==='swarm'\)swarm/);
+  for(const type of ['melee','toxic','trapper','boss_titan','boss_warden','boss_void','toxic_boss_spore','toxic_boss_fog','toxic_boss_core'])assert.match(visuals,new RegExp(`${type}:\\{size:`));
+  assert.match(game,/visual:'boss_titan'/);assert.match(game,/visual:'boss_void'/);
+  assert.match(game,/kind:'boss_warden'/);assert.match(game,/kind:'boss_void'/);
+  assert.match(game,/kind:'toxic_boss_fog'/);assert.match(game,/kind:'toxic_boss_core'/);
+  assert.match(game,/\{melee:\.30,swarm:/);
 });
