@@ -1,0 +1,99 @@
+{
+  "source": "warrior.png supplied by user",
+  "scout_reference": {
+    "character_sheets": "768x128, 6 frames of 128x128",
+    "scout_q_projectile": "384x64, 6 frames of 64x64",
+    "scout_e_effect": "2172x724 (irregular source-frame layout)",
+    "scout_r_effect": "approximately 2304x384 with 6 ~376px frames"
+  },
+  "warrior": {
+    "body_angle_offset_radians": -1.5707963267948966,
+    "idle": {
+      "file": "warrior_idle.png",
+      "size": [
+        768,
+        128
+      ],
+      "frames": 6,
+      "frame": [
+        128,
+        128
+      ],
+      "fps": 5,
+      "loop": true
+    },
+    "walk": {
+      "file": "warrior_walk.png",
+      "size": [
+        768,
+        128
+      ],
+      "frames": 6,
+      "frame": [
+        128,
+        128
+      ],
+      "fps": 10,
+      "loop": true
+    },
+    "attack": {
+      "file": "warrior_attack.png",
+      "size": [
+        768,
+        128
+      ],
+      "frames": 6,
+      "frame": [
+        128,
+        128
+      ],
+      "duration": 0.28,
+      "loop": false
+    },
+    "q": {
+      "name": "WIR OSTRZA / BLADE SPIN",
+      "file": "warrior_q_effect.png",
+      "size": [
+        2304,
+        384
+      ],
+      "frames": 6,
+      "frame": [
+        384,
+        384
+      ],
+      "duration": 0.62,
+      "radius": 145
+    },
+    "e": {
+      "name": "TELEPORT / DASH",
+      "file": "warrior_e_effect.png",
+      "size": [
+        768,
+        128
+      ],
+      "frames": 6,
+      "frame": [
+        128,
+        128
+      ],
+      "duration": 0.42,
+      "distance": 190
+    },
+    "r": {
+      "name": "SZAŁ / FURY",
+      "file": "warrior_r_effect.png",
+      "size": [
+        2304,
+        384
+      ],
+      "frames": 6,
+      "frame": [
+        384,
+        384
+      ],
+      "duration": 1.0,
+      "buff_duration": 9.0
+    }
+  }
+}
