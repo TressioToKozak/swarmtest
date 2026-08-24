@@ -2,6 +2,30 @@
    file owns silhouettes and animation so visual iterations remain isolated. */
 (()=>{
   const TAU=Math.PI*2;
+  const FRAME_COUNT=6,ENEMY_SPRITE_ANGLE_OFFSET=0;
+  const configs={
+    swarm:{size:40,fps:14,attackDuration:.22},brute:{size:84,fps:6,attackDuration:.34},
+    shooter:{size:76,fps:8,attackDuration:.30},charger:{size:78,fps:8,attackDuration:.26},
+    exploder:{size:68,fps:8,attackDuration:.30}
+  };
+  const sheets={};
+  const paths={swarm:['move','attack'],brute:['move','attack'],shooter:['move','attack','projectile'],charger:['move','attack','windup','charge'],exploder:['move','attack','explosion','explosion_radius']};
+  if(typeof Image!=='undefined')for(const [type,names] of Object.entries(paths)){sheets[type]={};for(const name of names){const entry=sheets[type][name]={image:new Image(),loaded:false,error:false};entry.image.onload=()=>entry.loaded=true;entry.image.onerror=()=>entry.error=true;entry.image.src=`assets/mobs/${type}/${name}.png`}}
+  function loaded(type,name){const entry=sheets[type]?.[name];return entry?.loaded&&entry.image.naturalWidth>0?entry.image:null}
+  function oneShotFrame(remaining,duration){return Math.min(FRAME_COUNT-1,Math.max(0,Math.floor((1-Math.max(0,remaining)/duration)*FRAME_COUNT)))}
+  function drawMobSprite(ctx,e,time,hit){
+    const config=configs[e.type];if(!config||e.bossTier)return false;
+    let animation='move',frame=Math.floor((time+(e.phase||0))*config.fps)%FRAME_COUNT;
+    if(e.type==='charger'&&e.charging>0){animation='charge';frame=Math.min(5,Math.floor(Math.max(0,(.55-e.charging)/.55)*6))}
+    else if(e.type==='charger'&&e.windup>0){animation='windup';frame=Math.min(5,Math.floor(Math.max(0,(.65-e.windup)/.65)*6))}
+    else if(e.attackAnim>0){animation='attack';frame=oneShotFrame(e.attackAnim,config.attackDuration)}
+    const image=loaded(e.type,animation);if(!image)return false;
+    ctx.save();ctx.rotate(ENEMY_SPRITE_ANGLE_OFFSET);if(hit){ctx.filter='brightness(1.8) saturate(.45)'}
+    ctx.drawImage(image,frame*128,0,128,128,-config.size/2,-config.size/2,config.size,config.size);ctx.restore();return true
+  }
+  function drawProjectile(ctx,b,time){const image=b.kind==='shooterBullet'&&loaded('shooter','projectile');if(!image)return false;const frame=Math.floor(time*18)%6;ctx.save();ctx.translate(b.x,b.y);ctx.rotate(Math.atan2(b.vy,b.vx));ctx.drawImage(image,frame*64,0,64,64,-12,-12,24,24);ctx.restore();return true}
+  function drawExplosion(ctx,event){const duration=.55,remaining=Math.max(0,event.life),frame=oneShotFrame(remaining,duration),progress=1-remaining/duration;let drawn=false;for(const [name,size] of [['explosion_radius',290],['explosion',290]]){const image=loaded('exploder',name);if(!image)continue;ctx.save();ctx.globalAlpha=name==='explosion_radius'?Math.min(1,(1-progress)*1.8):1;ctx.drawImage(image,frame*384,0,384,384,event.x-size/2,event.y-size/2,size,size);ctx.restore();drawn=true}return drawn}
+  window.enemySpriteVisuals={configs,sheets,drawProjectile,drawExplosion,EXPLODER_EXPLOSION_DIAMETER:290};
   function ellipse(ctx,x,y,rx,ry,color){ctx.fillStyle=color;ctx.beginPath();ctx.ellipse(x,y,rx,ry,0,0,TAU);ctx.fill()}
   function organic(ctx,r,points=12,wobble=0){
     ctx.beginPath();
@@ -66,6 +90,7 @@
     }
   }
   window.drawEnemyModel=(ctx,e,{time,hit,bossData})=>{
+    if(drawMobSprite(ctx,e,time,hit))return true;
     if(e.bossTier&&e.type.startsWith('toxic_'))toxicBoss(ctx,e,time,hit,bossData);else if(e.bossTier)boss(ctx,e,time,hit,bossData);else if(e.type==='toxic')toxic(ctx,e,time,hit);else if(e.type==='trapper')trapper(ctx,e,time,hit);else if(e.type==='swarm')swarm(ctx,e,time,hit);else if(e.type==='shooter')shooter(ctx,e,time,hit);else if(e.type==='charger')charger(ctx,e,time,hit);else if(e.type==='exploder')exploder(ctx,e,time,hit);else return false;return true;
   };
 })();
