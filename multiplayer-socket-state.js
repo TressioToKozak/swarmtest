@@ -13,6 +13,8 @@
     function invalidate(state='closed'){lastHelloAck=null;handshakeState=state;control.clear()}
     return{beginConnection,publish,on,invalidate,getHandshakeState:()=>handshakeState,getLastHelloAck:()=>lastHelloAck};
   }
-  function shouldApplyHelloAck(previous,next){if(!next?.playerId||!next?.connectionId||!Number.isSafeInteger(next.connectionGeneration))return false;if(!previous)return true;if(next.connectionId===previous.connectionId&&next.connectionGeneration===previous.connectionGeneration)return false;return next.connectionGeneration>previous.connectionGeneration}
-  return{createControlChannel,shouldApplyHelloAck};
+  function shouldApplyHelloAck(previous,next){if(!next?.playerId||!next?.connectionId||!Number.isSafeInteger(next.connectionGeneration))return false;if(!previous||previous.playerId!==next.playerId)return true;if(next.connectionId===previous.connectionId&&next.connectionGeneration===previous.connectionGeneration)return false;return next.connectionGeneration>previous.connectionGeneration}
+  const MATCH_SCOPED=new Set(['gameState','gameOver','pauseState','levelUp','levelResume','upgradeWaiting','upgradeOffer','upgradeAccepted']);
+  function shouldAcceptMatchMessage(currentMatchId,message){if(!MATCH_SCOPED.has(message?.type))return true;const matchId=message.type==='gameState'?message.state?.matchId:message.matchId;return Boolean(currentMatchId&&matchId===currentMatchId)}
+  return{createControlChannel,shouldApplyHelloAck,shouldAcceptMatchMessage};
 });
