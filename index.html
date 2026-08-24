@@ -15,10 +15,11 @@
     <main id="game-shell">
       <canvas id="game" aria-label="Pole gry Swarmfall"></canvas>
 
-      <section class="modal account-modal" id="accountModal" aria-label="Logowanie do konta">
+      <section class="modal account-modal auth-loading" id="accountModal" aria-label="Logowanie do konta" aria-busy="true">
         <div class="account-panel">
           <div class="menu-sigil"><i></i><b>S</b><i></i></div><div class="eyebrow">POSTĘP W CHMURZE</div><h2>TWOJE <em>KONTO</em></h2>
           <p>Zaloguj się, aby zapisywać postępy, statystyki i odblokowane elementy na koncie.</p>
+          <div class="account-loading" id="accountLoading"><span></span><b>SPRAWDZANIE SESJI…</b></div>
           <div class="account-tabs"><button type="button" class="active" data-account-tab="login">LOGOWANIE</button><button type="button" class="secondary-btn" data-account-tab="register">REJESTRACJA</button></div>
           <form class="account-form" data-form="login" novalidate><label>LOGIN LUB E-MAIL<input name="identifier" autocomplete="username" maxlength="120"></label><label>HASŁO<input name="password" type="password" maxlength="128" autocomplete="current-password"></label><button type="submit">ZALOGUJ SIĘ <span>→</span></button></form>
           <form class="account-form hidden" data-form="register" novalidate><label>LOGIN<input name="login" maxlength="24" autocomplete="username"></label><label>E-MAIL<input name="email" maxlength="120" autocomplete="email"></label><label>HASŁO<input name="password" type="password" maxlength="128" autocomplete="new-password"><small>Minimum 8 znaków.</small></label><button type="submit">UTWÓRZ KONTO <span>→</span></button></form>
