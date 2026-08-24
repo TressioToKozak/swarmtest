@@ -20,12 +20,12 @@
           <div class="menu-sigil"><i></i><b>S</b><i></i></div><div class="eyebrow">POSTĘP W CHMURZE</div><h2>TWOJE <em>KONTO</em></h2>
           <p>Zaloguj się, aby zapisywać postępy, statystyki i odblokowane elementy na koncie.</p>
           <div class="account-tabs"><button type="button" class="active" data-account-tab="login">LOGOWANIE</button><button type="button" class="secondary-btn" data-account-tab="register">REJESTRACJA</button></div>
-          <form class="account-form" data-form="login"><label>LOGIN LUB E-MAIL<input name="identifier" required autocomplete="username" maxlength="120"></label><label>HASŁO<input name="password" type="password" required minlength="8" autocomplete="current-password"></label><button type="submit">ZALOGUJ SIĘ <span>→</span></button></form>
-          <form class="account-form hidden" data-form="register"><label>LOGIN<input name="login" required minlength="3" maxlength="24" pattern="[a-zA-Z0-9_.-]+" autocomplete="username"></label><label>E-MAIL<input name="email" type="email" required maxlength="120" autocomplete="email"></label><label>HASŁO<input name="password" type="password" required minlength="8" autocomplete="new-password"><small>Minimum 8 znaków.</small></label><button type="submit">UTWÓRZ KONTO <span>→</span></button></form>
+          <form class="account-form" data-form="login" novalidate><label>LOGIN LUB E-MAIL<input name="identifier" autocomplete="username" maxlength="120"></label><label>HASŁO<input name="password" type="password" maxlength="128" autocomplete="current-password"></label><button type="submit">ZALOGUJ SIĘ <span>→</span></button></form>
+          <form class="account-form hidden" data-form="register" novalidate><label>LOGIN<input name="login" maxlength="24" autocomplete="username"></label><label>E-MAIL<input name="email" maxlength="120" autocomplete="email"></label><label>HASŁO<input name="password" type="password" maxlength="128" autocomplete="new-password"><small>Minimum 8 znaków.</small></label><button type="submit">UTWÓRZ KONTO <span>→</span></button></form>
           <p class="account-message" id="accountMessage" aria-live="polite"></p>
         </div>
       </section>
-      <div class="account-identity hidden" id="accountIdentity"><span>KONTO <b>—</b></span><button type="button" id="accountLogoutBtn">WYLOGUJ</button></div>
+      <div class="account-identity hidden" id="accountIdentity"><span><small>—</small><b>ZAPISANO</b></span><button type="button" id="accountLogoutBtn">WYLOGUJ</button></div>
       <section class="modal custom-dialog hidden" id="customDialog"><div class="account-panel compact"><div class="eyebrow" id="customDialogTitle">INFORMACJA</div><p id="customDialogText"></p><button id="customDialogClose" type="button">ROZUMIEM</button></div></section>
 
       <header class="topbar">
