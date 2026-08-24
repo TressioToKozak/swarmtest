@@ -114,3 +114,5 @@
 .multiplayer-waiting{position:absolute;z-index:28;left:50%;top:50%;width:min(460px,88vw);padding:28px;transform:translate(-50%,-50%);text-align:center;background:rgba(7,13,26,.97);border:1px solid var(--cyan);box-shadow:0 24px 80px #000,0 0 28px rgba(81,246,223,.14)}.multiplayer-waiting strong,.multiplayer-waiting span{display:block}.multiplayer-waiting strong{font:800 14px "Chakra Petch";letter-spacing:2px}.multiplayer-waiting span{margin-top:9px;color:#8191a7;font-size:10px}
 
 .multiplayer-ping{font:700 10px 'Chakra Petch';color:#6fffc2}.multiplayer-ping.medium{color:#ffd66f}.multiplayer-ping.bad{color:#ff687d}.multiplayer-ping.hidden{display:none}
+/* Account actions belong to menu surfaces, never the active run HUD. */
+#game-shell:not(:has(#startModal:not(.hidden),#charactersModal:not(.hidden),#mapsModal:not(.hidden),#instructionsModal:not(.hidden),#statsModal:not(.hidden),#achievementsModal:not(.hidden),#settingsModal:not(.hidden),#multiplayerModal:not(.hidden))) #accountLogoutBtn{display:none}
