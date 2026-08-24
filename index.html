@@ -15,6 +15,19 @@
     <main id="game-shell">
       <canvas id="game" aria-label="Pole gry Swarmfall"></canvas>
 
+      <section class="modal account-modal" id="accountModal" aria-label="Logowanie do konta">
+        <div class="account-panel">
+          <div class="menu-sigil"><i></i><b>S</b><i></i></div><div class="eyebrow">POSTĘP W CHMURZE</div><h2>TWOJE <em>KONTO</em></h2>
+          <p>Zaloguj się, aby zapisywać postępy, statystyki i odblokowane elementy na koncie.</p>
+          <div class="account-tabs"><button type="button" class="active" data-account-tab="login">LOGOWANIE</button><button type="button" class="secondary-btn" data-account-tab="register">REJESTRACJA</button></div>
+          <form class="account-form" data-form="login"><label>LOGIN LUB E-MAIL<input name="identifier" required autocomplete="username" maxlength="120"></label><label>HASŁO<input name="password" type="password" required minlength="8" autocomplete="current-password"></label><button type="submit">ZALOGUJ SIĘ <span>→</span></button></form>
+          <form class="account-form hidden" data-form="register"><label>LOGIN<input name="login" required minlength="3" maxlength="24" pattern="[a-zA-Z0-9_.-]+" autocomplete="username"></label><label>E-MAIL<input name="email" type="email" required maxlength="120" autocomplete="email"></label><label>HASŁO<input name="password" type="password" required minlength="8" autocomplete="new-password"><small>Minimum 8 znaków.</small></label><button type="submit">UTWÓRZ KONTO <span>→</span></button></form>
+          <p class="account-message" id="accountMessage" aria-live="polite"></p>
+        </div>
+      </section>
+      <div class="account-identity hidden" id="accountIdentity"><span>KONTO <b>—</b></span><button type="button" id="accountLogoutBtn">WYLOGUJ</button></div>
+      <section class="modal custom-dialog hidden" id="customDialog"><div class="account-panel compact"><div class="eyebrow" id="customDialogTitle">INFORMACJA</div><p id="customDialogText"></p><button id="customDialogClose" type="button">ROZUMIEM</button></div></section>
+
       <header class="topbar">
         <div class="brand"><span class="brand-mark"><i></i></span><span>SWARMFALL<small> SURVIVAL</small></span></div>
         <div class="timer-block"><span id="phaseLabel">RUINY · ETAP 1/3</span><strong id="timer">00:00</strong><small id="bossEta">BOSS ZA 05:00</small></div>
@@ -101,7 +114,7 @@
       <section class="modal achievements-modal hidden" id="achievementsModal">
         <div class="instruction-panel achievements-panel">
           <div class="eyebrow">POSTĘP KONTA</div><h2>OSIĄGNIĘCIA</h2>
-          <p>Nagrody można odebrać tylko raz. Postęp jest zapisany na tym urządzeniu.</p>
+          <p>Nagrody można odebrać tylko raz. Postęp jest zapisany na Twoim koncie.</p>
           <div class="achievements-list" id="achievementsList"></div>
           <button type="button" id="achievementsBackBtn" class="secondary-btn">← WRÓĆ DO MENU</button>
         </div>
@@ -148,7 +161,7 @@
 
       <section class="modal stats-modal hidden" id="statsModal">
         <div class="instruction-panel stats-panel">
-          <div class="eyebrow">ZAPISANE NA TYM URZĄDZENIU</div>
+          <div class="eyebrow">ZAPISANE NA TWOIM KONCIE</div>
           <h2>TWOJE <em>STATYSTYKI</em></h2>
           <div class="stats-grid">
             <article><span>NAJDŁUŻSZA GRA</span><strong id="bestTime">00:00</strong></article>
@@ -189,6 +202,7 @@
       </section>
       <section class="multiplayer-waiting hidden" id="multiplayerWaiting"><div class="eyebrow">AWANS DRUŻYNY</div><strong>CZEKANIE NA POZOSTAŁYCH GRACZY</strong><span>Każdy gracz wybiera własne ulepszenie.</span></section>
     </main>
+    <script src="account-client.js?v=1"></script>
     <script src="save-state.js?v=2"></script>
     <script src="shared-game-data.js?v=1"></script>
     <script src="shared-mechanics.js?v=4"></script>
