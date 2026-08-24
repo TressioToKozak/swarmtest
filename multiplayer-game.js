@@ -51,7 +51,7 @@
     elapsed=state.time;player.level=state.level;player.xp=state.xp;player.nextXp=state.nextXp;serverPaused=Boolean(state.paused);pauseReason=state.pauseReason||null;paused=serverPaused;if(state.ended){showMultiplayerGameOver();return}
     if(!serverPaused)document.getElementById('multiplayerWaiting').classList.add('hidden');renderTeamHud(state.players);
     if(state.wave&&state.wave.seq!==lastWaveSeq){lastWaveSeq=state.wave.seq;showWaveBanner(state.wave.title,`FAZA ${state.wave.phase+1}`)}
-    for(const event of state.explosions||[])if(event.seq>lastExplosionSeq){lastExplosionSeq=event.seq;rings.push({x:event.x,y:event.y,r:8,max:event.r||145,life:.45,color:'#ff7938'})}for(const current of state.players){
+    for(const event of state.explosions||[])if(event.seq>lastExplosionSeq){lastExplosionSeq=event.seq;rings.push({x:event.x,y:event.y,r:8,max:event.r||145,life:.55,color:'#ff7938',effect:'exploderExplosion'})}for(const current of state.players){
       const old=previous?.players?.find(p=>p.id===current.id);
       if(old&&(current.abilitySeq||0)!==(old.abilitySeq||0))playMultiplayerAbilityVisual(current.character,current.lastAbility,current,old);
     }
