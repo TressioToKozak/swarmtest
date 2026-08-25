@@ -2,7 +2,7 @@
 const test=require('node:test'),assert=require('node:assert/strict'),http=require('node:http'),fs=require('node:fs'),path=require('node:path');
 const {createStaticHandler,publicFiles}=require('../server');
 
-const multiplayerRuntimeFiles=['shared-collision.js','multiplayer-socket-state.js','multiplayer-client-utils.js','multiplayer.js','multiplayer-visual-state.js','multiplayer-game.js'];
+const multiplayerRuntimeFiles=['shared-collision.js','map-visuals.js','multiplayer-socket-state.js','multiplayer-client-utils.js','multiplayer.js','multiplayer-visual-state.js','multiplayer-game.js'];
 async function get(port,pathname){return new Promise((resolve,reject)=>http.get({host:'127.0.0.1',port,path:pathname},response=>{const chunks=[];response.on('data',chunk=>chunks.push(chunk));response.once('end',()=>resolve({status:response.statusCode,headers:response.headers,body:Buffer.concat(chunks)}));response.once('error',reject)}).once('error',reject))}
 
 test('HTTP server serves every multiplayer runtime JavaScript file',async t=>{

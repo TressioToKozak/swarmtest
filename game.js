@@ -37,6 +37,17 @@ function loopFrame(time,fps,frameCount){return Math.floor(Math.max(0,time)*fps)%
 function onceFrame(progress,frameCount){return Math.min(frameCount-1,Math.floor(Math.max(0,Math.min(1,progress))*frameCount))}
 function drawSpriteFrame(context,image,sx,sy,sw,sh,dx,dy,dw,dh){context.drawImage(image,sx,sy,sw,sh,dx,dy,dw,dh)}
 function drawCenteredEffectFrame(context,image,rect,diameter){const scale=diameter/Math.max(rect.w,rect.h),dw=rect.w*scale,dh=rect.h*scale;drawSpriteFrame(context,image,rect.x,rect.y,rect.w,rect.h,-dw/2,-dh/2,dw,dh)}
+const druidEffectCanvas=document.createElement('canvas');druidEffectCanvas.width=druidEffectCanvas.height=384;
+const druidEffectContext=druidEffectCanvas.getContext('2d');
+function drawDruidEffectFrame(context,image,frame,size,alpha){
+  const mask=druidEffectContext.createRadialGradient(192,192,192*.55,192,192,192);
+  mask.addColorStop(0,'rgba(255,255,255,1)');mask.addColorStop(.78,'rgba(255,255,255,.92)');mask.addColorStop(1,'rgba(255,255,255,0)');
+  druidEffectContext.clearRect(0,0,384,384);druidEffectContext.globalCompositeOperation='source-over';druidEffectContext.globalAlpha=1;
+  druidEffectContext.drawImage(image,frame*384,0,384,384,0,0,384,384);
+  druidEffectContext.globalCompositeOperation='destination-in';druidEffectContext.fillStyle=mask;druidEffectContext.fillRect(0,0,384,384);
+  druidEffectContext.globalCompositeOperation='source-over';context.globalCompositeOperation='source-over';context.globalAlpha=alpha;
+  context.drawImage(druidEffectCanvas,-size/2,-size/2,size,size);
+}
 preloadScoutVisuals();
 preloadWarriorVisuals();
 preloadDruidVisuals();
@@ -394,9 +405,9 @@ function drawSkillEffect(r){
   if(r.effect==='warriorQ'){const image=warriorImage('qEffect');if(image){ctx.globalAlpha=fade;drawSpriteFrame(ctx,image,onceFrame(progress,6)*384,0,384,384,-WARRIOR_Q_DIAMETER/2,-WARRIOR_Q_DIAMETER/2,WARRIOR_Q_DIAMETER,WARRIOR_Q_DIAMETER);ctx.restore();return}}
   if(r.effect==='warriorE'){const image=warriorImage('eEffect');if(image){ctx.rotate((r.angle||0)+WARRIOR_BODY_ANGLE_OFFSET);ctx.globalAlpha=fade;drawSpriteFrame(ctx,image,onceFrame(progress,6)*128,0,128,128,-WARRIOR_E_SIZE/2,-WARRIOR_E_SIZE/2,WARRIOR_E_SIZE,WARRIOR_E_SIZE);ctx.restore();return}}
   if(r.effect==='warriorR'){const image=warriorImage('rEffect');if(image){ctx.globalAlpha=fade;drawSpriteFrame(ctx,image,onceFrame(progress,6)*384,0,384,384,-WARRIOR_R_SIZE/2,-WARRIOR_R_SIZE/2,WARRIOR_R_SIZE,WARRIOR_R_SIZE);ctx.restore();return}}
-  if(r.effect==='druidQ'){const image=druidImage('qEffect');if(image){ctx.globalAlpha=fade*.9;drawSpriteFrame(ctx,image,onceFrame(progress,6)*384,0,384,384,-DRUID_Q_SIZE/2,-DRUID_Q_SIZE/2,DRUID_Q_SIZE,DRUID_Q_SIZE);ctx.restore();return}}
-  if(r.effect==='druidE'){const image=druidImage('eEffect');if(image){ctx.globalAlpha=fade*.72;drawSpriteFrame(ctx,image,onceFrame(progress,6)*384,0,384,384,-DRUID_E_SIZE/2,-DRUID_E_SIZE/2,DRUID_E_SIZE,DRUID_E_SIZE);ctx.restore();return}}
-  if(r.effect==='druidR'){const image=druidImage('rEffect');if(image){ctx.globalAlpha=fade;drawSpriteFrame(ctx,image,onceFrame(progress,6)*384,0,384,384,-DRUID_R_SIZE/2,-DRUID_R_SIZE/2,DRUID_R_SIZE,DRUID_R_SIZE);ctx.restore();return}}
+  if(r.effect==='druidQ'){const image=druidImage('qEffect');if(image){drawDruidEffectFrame(ctx,image,onceFrame(progress,6),DRUID_Q_SIZE,fade*.78);ctx.restore();return}}
+  if(r.effect==='druidE'){const image=druidImage('eEffect');if(image){drawDruidEffectFrame(ctx,image,onceFrame(progress,6),DRUID_E_SIZE,fade*.58);ctx.restore();return}}
+  if(r.effect==='druidR'){const image=druidImage('rEffect');if(image){drawDruidEffectFrame(ctx,image,onceFrame(progress,6),DRUID_R_SIZE,fade*.9);ctx.restore();return}}
   if(r.effect==='scoutE'){const image=scoutImage('eEffect');if(image){const rect=SCOUT_E_FRAMES[onceFrame(progress,SCOUT_E_FRAMES.length)],diameter=Math.max(16,r.r*2);ctx.globalCompositeOperation='source-over';ctx.globalAlpha=fade;drawCenteredEffectFrame(ctx,image,rect,diameter);ctx.restore();return}}
   if(r.effect==='scoutR'){const image=scoutImage('rEffect');if(image){const found=SCOUT_R_TIMING.findIndex(limit=>progress<limit),rect=SCOUT_R_FRAMES[found<0?5:found],diameter=Math.max(24,r.r*2);ctx.globalCompositeOperation='source-over';ctx.globalAlpha=fade;drawCenteredEffectFrame(ctx,image,rect,diameter);ctx.restore();return}}
   ctx.globalCompositeOperation='lighter';ctx.globalAlpha=fade;ctx.shadowBlur=20;ctx.shadowColor=r.color;
