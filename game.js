@@ -438,6 +438,8 @@ function drawCore(){ctx.save();if(screenShake)ctx.translate((Math.random()-.5)*s
 
 function draw(){const started=debugProfileStart();drawCore();debugProfileEnd('draw',started)}
 
+function draw(){const started=debugProfileStart();drawCore();debugProfileEnd('draw',started)}
+
 function drawSelectionPreviews(){
   ['scout','warrior','druid'].forEach(id=>{const canvas=document.querySelector(`#${id}Preview`),c=canvas.getContext('2d'),w=canvas.width,h=canvas.height,g=c.createRadialGradient(w*.5,h*.5,10,w*.5,h*.5,w*.42);g.addColorStop(0,id==='warrior'?'#533529':id==='druid'?'#174632':'#1d5260');g.addColorStop(1,'#050b14');c.fillStyle=g;c.fillRect(0,0,w,h);c.strokeStyle='rgba(255,255,255,.055)';for(let x=0;x<w;x+=42){c.beginPath();c.moveTo(x,0);c.lineTo(x,h);c.stroke()}for(let y=0;y<h;y+=42){c.beginPath();c.moveTo(0,y);c.lineTo(w,y);c.stroke()}const image=id==='scout'?scoutImage('portrait'):id==='warrior'?warriorImage('portrait'):druidImage('portrait');if(image){const scale=Math.min(w/image.width,h/image.height)*.92,dw=image.width*scale,dh=image.height*scale;c.drawImage(image,(w-dw)/2,(h-dh)/2,dw,dh)}else{c.fillStyle='#718096';c.font='700 11px Chakra Petch';c.textAlign='center';c.fillText('ŁADOWANIE…',w/2,h/2)}});
   const map=document.querySelector('#mapPreviewCanvas'),mapPreviewContext=map.getContext('2d');if(!window.SwarmMapVisuals?.renderRuinsMapPreview?.(mapPreviewContext,map.width,map.height,{crates:SWARM_MAPS.ruins.crates})){mapPreviewContext.fillStyle='#080311';mapPreviewContext.fillRect(0,0,map.width,map.height);mapPreviewContext.fillStyle='#8fa0b3';mapPreviewContext.font='700 12px Chakra Petch';mapPreviewContext.textAlign='center';mapPreviewContext.fillText('ŁADOWANIE MAPY…',map.width/2,map.height/2)}
