@@ -23,6 +23,7 @@
     if(message.type==='leftLobby'){leaveMultiplayerLobby();return}
     if(!getSession()||!authoritativePlayerId)return;
     if(message.type==='accountProgress'){window.SwarmAccount?.reconcileServerProgress?.(message);return}
+    if(message.type==='gamePreparing'){multiplayerMode=true;resetMatchRuntime();currentMatchId=null;return}
     if(message.type==='lobbyState'&&!message.lobby?.started&&currentMatchId){resetMatchRuntime();currentMatchId=null;multiplayerMode=true;return}
     if(message.type==='gameStarted'){
       const nextMatchId=message.matchId||message.lobby?.matchId,reconnecting=Boolean(currentMatchId&&nextMatchId===currentMatchId);multiplayerMode=true;if(!reconnecting)resetMatchRuntime();currentMatchId=nextMatchId;running=true;paused=true;document.getElementById('multiplayerWaiting').classList.add('hidden');pendingInputs=[];
