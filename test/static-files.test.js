@@ -25,7 +25,7 @@ test('HTTP server serves every local JavaScript referenced by index.html',async 
     assert.ok(response.body.length>0,`${source} should have a non-empty body`);
   }
   const before=(dependency,consumer)=>assert.ok(files.indexOf(dependency)>=0&&files.indexOf(dependency)<files.indexOf(consumer),`${dependency} must load before ${consumer}`);
-  for(const dependency of['shared-game-data.js','shared-mechanics.js','shared-map-data.js','shared-collision.js','asset-gate.js','nav-prewarm-policy.js','spatial-grid.js','map-data.js','map-visuals.js','enemy-visuals.js'])before(dependency,'game.js');
+  for(const dependency of['fresh-run-state.js','shared-game-data.js','shared-mechanics.js','shared-map-data.js','shared-collision.js','asset-gate.js','nav-prewarm-policy.js','spatial-grid.js','map-data.js','map-visuals.js','enemy-visuals.js'])before(dependency,'game.js');
   for(const dependency of['game.js','multiplayer-socket-state.js','multiplayer-client-utils.js','multiplayer.js','multiplayer-visual-state.js'])before(dependency,'multiplayer-game.js');
 });
 
@@ -52,3 +52,5 @@ test('logout action is hidden outside menu surfaces',()=>{
 });
 
 test('all scrollable game panels share Firefox and WebKit scrollbar styling',()=>{const css=fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8');for(const selector of['.multiplayer-panel','.lobby-room ul','.instruction-panel','.selection-panel','.pause-panel','.account-panel','.synergy-list'])assert.match(css,new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'[^}]*scrollbar-width'));assert.match(css,/scrollbar-color:#2bbfc5 #07111d/);assert.match(css,/\.multiplayer-panel::\-webkit-scrollbar/);assert.match(css,/\.lobby-room ul::\-webkit-scrollbar-thumb:hover/)});
+
+test('topbar reserves independent responsive columns for the timer and stats',()=>{const css=fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8'),responsive=css.slice(css.indexOf('/* Three owned columns'));assert.match(responsive,/\.topbar\{display:grid;grid-template-columns:minmax\(0,1fr\) auto minmax\(0,1fr\)/);assert.match(responsive,/\.timer-block\{position:static;left:auto;transform:none/);assert.doesNotMatch(responsive,/\.timer-block\{[^}]*position:absolute/);for(const width of[1024,900,700,600,520])assert.match(responsive,new RegExp(`@media\\(max-width:${width}px\\)`));assert.match(responsive,/#fpsCounter\{display:none\}/);assert.match(responsive,/@media\(max-width:520px\)[^{]*\{[^}]*\.stats span:nth-child\(4\)\{display:none\}/)});
