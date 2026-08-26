@@ -50,3 +50,5 @@ test('logout action is hidden outside menu surfaces',()=>{
   const css=fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8');
   assert.ok(css.includes('#multiplayerModal:not(.hidden))) #accountLogoutBtn{display:none}'));
 });
+
+test('all scrollable game panels share Firefox and WebKit scrollbar styling',()=>{const css=fs.readFileSync(path.join(__dirname,'..','style.css'),'utf8');for(const selector of['.multiplayer-panel','.lobby-room ul','.instruction-panel','.selection-panel','.pause-panel','.account-panel','.synergy-list'])assert.match(css,new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'[^}]*scrollbar-width'));assert.match(css,/scrollbar-color:#2bbfc5 #07111d/);assert.match(css,/\.multiplayer-panel::\-webkit-scrollbar/);assert.match(css,/\.lobby-room ul::\-webkit-scrollbar-thumb:hover/)});
