@@ -1,0 +1,8 @@
+(function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.SwarmSpatialGrid=api})(typeof globalThis!=='undefined'?globalThis:this,function(){
+  class SpatialGrid{
+    constructor(cellSize=128){this.cellSize=cellSize;this.cells=new Map();this.entities=[];this.seen=new Uint32Array(0);this.stamp=0;this.indices=[]}
+    rebuild(entities){this.entities=entities;this.cells.clear();if(this.seen.length<entities.length)this.seen=new Uint32Array(entities.length);for(let i=0;i<entities.length;i++){const entity=entities[i],radius=entity.r||0,minX=Math.floor((entity.x-radius)/this.cellSize),maxX=Math.floor((entity.x+radius)/this.cellSize),minY=Math.floor((entity.y-radius)/this.cellSize),maxY=Math.floor((entity.y+radius)/this.cellSize);for(let cy=minY;cy<=maxY;cy++)for(let cx=minX;cx<=maxX;cx++){const key=cx+','+cy,cell=this.cells.get(key);if(cell)cell.push(i);else this.cells.set(key,[i])}}return this}
+    queryCircle(x,y,radius,out=[]){out.length=0;const indices=this.indices;indices.length=0;this.stamp=(this.stamp+1)>>>0;if(this.stamp===0){this.seen.fill(0);this.stamp=1}const minX=Math.floor((x-radius)/this.cellSize),maxX=Math.floor((x+radius)/this.cellSize),minY=Math.floor((y-radius)/this.cellSize),maxY=Math.floor((y+radius)/this.cellSize);for(let cy=minY;cy<=maxY;cy++)for(let cx=minX;cx<=maxX;cx++){const cell=this.cells.get(cx+','+cy);if(!cell)continue;for(let j=0;j<cell.length;j++){const index=cell[j];if(this.seen[index]===this.stamp)continue;this.seen[index]=this.stamp;indices.push(index)}}indices.sort((a,b)=>a-b);for(let i=0;i<indices.length;i++)out.push(this.entities[indices[i]]);return out}
+  }
+  return{SpatialGrid};
+});
