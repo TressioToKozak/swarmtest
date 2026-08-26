@@ -59,3 +59,43 @@ test('in-place compaction preserves order for authoritative hot collections',()=
     assert.deepEqual(values,expected);
   }
 });
+
+function projectileHits(grid,bullet){
+  const {spatialRadiusCandidatesInto}=require('../server');
+  return spatialRadiusCandidatesInto(grid,bullet.x,bullet.y,bullet.r,grid.projectileQuery).filter(enemy=>{const dx=bullet.x-enemy.x,dy=bullet.y-enemy.y,radius=bullet.r+enemy.r;return dx*dx+dy*dy<radius*radius}).map(enemy=>enemy.id);
+}
+function bruteProjectileHits(enemies,bullet){return enemies.filter(enemy=>{const dx=bullet.x-enemy.x,dy=bullet.y-enemy.y,radius=bullet.r+enemy.r;return dx*dx+dy*dy<radius*radius}).map(enemy=>enemy.id)}
+
+test('radius-aware projectile query covers cell boundaries, corners, bosses and strict edges in authoritative order',()=>{
+  const {createSpatialGrid}=require('../server'),cell=140,cases=[
+    {bullet:{x:cell-1,y:70,r:4},enemies:[{id:'x-cross',x:cell+14,y:70,r:13}]},
+    {bullet:{x:70,y:cell-1,r:4},enemies:[{id:'y-cross',x:70,y:cell+14,r:13}]},
+    {bullet:{x:cell-1,y:cell-1,r:6},enemies:[{id:'corner',x:cell+12,y:cell+12,r:13}]},
+    {bullet:{x:cell*2-1,y:70,r:4},enemies:[{id:'boss',x:cell*3-30,y:70,r:120}]},
+    {bullet:{x:cell-20,y:cell-20,r:95},enemies:[{id:'large-projectile',x:cell+70,y:cell+20,r:13}]},
+    {bullet:{x:70,y:70,r:4},enemies:[{id:'strict-out',x:87,y:70,r:13}]},
+    {bullet:{x:cell-1,y:cell-1,r:30},enemies:[{id:'third',x:cell+8,y:cell+5,r:13},{id:'first',x:cell-8,y:cell-5,r:13},{id:'second',x:cell+5,y:cell-8,r:13}]}
+  ];
+  for(const scenario of cases){const grid=createSpatialGrid(scenario.enemies,cell);assert.deepEqual(projectileHits(grid,scenario.bullet),bruteProjectileHits(scenario.enemies,scenario.bullet))}
+  assert.deepEqual(projectileHits(createSpatialGrid(cases.at(-1).enemies,cell),cases.at(-1).bullet),['third','first','second']);
+});
+
+test('projectile spatial query matches brute force for 10000 randomized boundary-biased scenes',()=>{
+  const {createSpatialGrid}=require('../server');let seed=0x27ac51ef;const random=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/0x100000000},cell=140;
+  for(let scenario=0;scenario<10000;scenario++){
+    const boundary=(1+Math.floor(random()*18))*cell,bullet={x:boundary+(random()-.5)*20,y:(1+Math.floor(random()*14))*cell+(random()-.5)*20,r:1+random()*90},enemies=[];
+    for(let i=0;i<12;i++)enemies.push({id:`${scenario}:${i}`,x:bullet.x+(random()-.5)*360,y:bullet.y+(random()-.5)*360,r:5+random()*100});
+    assert.deepEqual(projectileHits(createSpatialGrid(enemies,cell),bullet),bruteProjectileHits(enemies,bullet));
+  }
+});
+
+test('projectile and nested splash queries use independent reusable buffers',()=>{
+  const {createSpatialGrid,spatialRadiusCandidatesInto,spatialRadiusCandidates}=require('../server'),enemies=[{id:'a',x:139,y:139,r:13},{id:'b',x:151,y:139,r:13},{id:'c',x:139,y:151,r:13},{id:'splash-only',x:400,y:139,r:13}],grid=createSpatialGrid(enemies,140);
+  const projectile=spatialRadiusCandidatesInto(grid,139,139,20,grid.projectileQuery),before=projectile.map(enemy=>enemy.id),splash=spatialRadiusCandidates(grid,139,139,300);
+  assert.notEqual(projectile,splash);assert.deepEqual(projectile.map(enemy=>enemy.id),before);assert.deepEqual(before,['a','b','c']);assert.deepEqual(splash.map(enemy=>enemy.id),['a','b','c','splash-only']);
+});
+
+test('piercing projectile keeps authoritative direct-hit order while nested splash runs',()=>{
+  const h=match(()=>.9),enemies=['a','b','c'].map((id,index)=>({id,type:'melee',ai:'melee',x:1399+index*4,y:1100,hp:1000,maxHp:1000,r:13,speed:0,damage:0,xp:0})),direct=[],damageEnemy=h.core.damageEnemy.bind(h.core);h.game.enemies=enemies;h.player.items.lens=3;h.game.bullets=[{id:'pierce',ownerId:h.player.id,x:1399,y:1100,vx:0,vy:0,r:30,life:1,damage:1,baseDamage:1,pierce:2,hitCount:0,originX:1399,originY:1100,critRoll:1}];h.core.damageEnemy=(lobby,enemy,damage,owner,kind,options)=>{if(kind==='projectile')direct.push(enemy.id);return damageEnemy(lobby,enemy,damage,owner,kind,options)};
+  h.core.tickProjectiles(h.lobby,0);assert.deepEqual(direct,['a','b','c']);assert.equal(new Set(direct).size,3);assert.equal(h.game.bullets.length,0);
+});
