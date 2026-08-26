@@ -5,6 +5,13 @@ const {SpatialGrid}=require('../spatial-grid');
 function exactHits(entities,x,y,r){return entities.filter(entity=>{const dx=entity.x-x,dy=entity.y-y,sum=entity.r+r;return dx*dx+dy*dy<sum*sum}).map(entity=>entity.id)}
 function gridHits(grid,x,y,r){return grid.queryCircle(x,y,r,[]).filter(entity=>{const dx=entity.x-x,dy=entity.y-y,sum=entity.r+r;return dx*dx+dy*dy<sum*sum}).map(entity=>entity.id)}
 
+test('spatial grid exposes the same constructor to a browser global',()=>{
+  const fs=require('node:fs'),vm=require('node:vm'),context={};
+  vm.runInNewContext(fs.readFileSync(require.resolve('../spatial-grid'),'utf8'),context);
+  assert.equal(typeof context.SwarmSpatialGrid?.SpatialGrid,'function');
+  assert.equal(new context.SwarmSpatialGrid.SpatialGrid(64).cellSize,64);
+});
+
 test('spatial grid broad phase preserves exact circle hits across boundaries and radii',()=>{
   let seed=0x51a7c0de;
   const random=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/0x100000000};
