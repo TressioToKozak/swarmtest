@@ -29,3 +29,13 @@ test('laptop-height UI keeps multiplayer actions scrollable and pause above XP',
 test('canonical ruins preview has an explicit preload invalidation path',()=>{const visuals=fs.readFileSync(require.resolve('../map-visuals.js'),'utf8'),game=fs.readFileSync(require.resolve('../game.js'),'utf8');assert.match(visuals,/function invalidateRuinsStaticPreview\(\)\{canonicalStatic=null/);assert.match(visuals,/assetsLoaded=true;invalidateRuinsStaticPreview\(\)/);assert.match(game,/swarm-map-visuals-invalidated/)});
 
 test('server and browser runtimes use the same collision source for sampled points',()=>{assert.equal(serverBlocked,collision.blocked);for(const mapId of['ruins','toxic'])for(const radius of[4,13,15,30])for(let x=45;x<3000;x+=137)for(let y=45;y<2200;y+=131)assert.equal(serverBlocked(mapId,x,y,radius),collision.blocked(mapId,x,y,radius));const game=fs.readFileSync(require.resolve('../game.js'),'utf8'),multiplayer=fs.readFileSync(require.resolve('../multiplayer-game.js'),'utf8');assert.match(game,/SwarmCollision\.blocked\(chosenMap/);assert.match(game,/SwarmCollision\.moveCircleWithCollision/);assert.match(multiplayer,/SwarmClientUtils\.predictInput/);const utils=fs.readFileSync(require.resolve('../multiplayer-client-utils.js'),'utf8');assert.match(utils,/collision\.moveCircleWithCollision/)});
+
+test('static collision broadphase exactly matches brute force on both maps',()=>{
+  let seed=0x51a7c0de;
+  const random=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/0x100000000};
+  for(const mapId of ['ruins','toxic'])for(let i=0;i<5000;i++){
+    const x=-50+random()*3100,y=-50+random()*2300,r=random()*90;
+    assert.equal(collision.blocked(mapId,x,y,r),collision.blockedBrute(mapId,x,y,r),`${mapId} blocked mismatch at ${x},${y},${r}`);
+    assert.equal(collision.projectileBlocked(mapId,x,y,r),collision.projectileBlockedBrute(mapId,x,y,r),`${mapId} projectile mismatch at ${x},${y},${r}`);
+  }
+});
