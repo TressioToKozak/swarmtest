@@ -1,0 +1,7 @@
+'use strict';
+const {performance}=require('node:perf_hooks');
+const {SpatialGrid}=require('../spatial-grid');
+const collision=require('../shared-collision');
+function legacyRebuild(entities,cellSize=128){const cells=new Map();for(let i=0;i<entities.length;i++){const e=entities[i],key=Math.floor(e.x/cellSize)+','+Math.floor(e.y/cellSize),cell=cells.get(key);if(cell)cell.push(i);else cells.set(key,[i])}return cells}
+console.log('Enemies | Legacy grid ms | Reused grid ms | Cell arrays created | Move ms | LOS samples ms');
+for(const count of[25,50,100,200,300]){const entities=Array.from({length:count},(_,i)=>({x:100+(i*73)%2700,y:100+(i*127)%1900,r:13})),grid=new SpatialGrid(128);let start=performance.now();for(let frame=0;frame<300;frame++)legacyRebuild(entities);const legacy=performance.now()-start;start=performance.now();for(let frame=0;frame<300;frame++)grid.rebuild(entities);const reused=performance.now()-start;start=performance.now();for(let frame=0;frame<20;frame++)for(const e of entities)collision.moveCircleWithCollision('ruins',e.x,e.y,e.r,5,3);const move=performance.now()-start;start=performance.now();for(let frame=0;frame<20;frame++)for(const e of entities)for(let s=1;s<=8;s++)collision.blocked('ruins',e.x+s*20,e.y+s*7,e.r);const los=performance.now()-start;console.log(`${count} | ${legacy.toFixed(3)} | ${reused.toFixed(3)} | ${grid.cellArraysCreated} | ${move.toFixed(3)} | ${los.toFixed(3)}`)}
