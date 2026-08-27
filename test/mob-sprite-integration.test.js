@@ -25,7 +25,7 @@ test('custom toxic-map mobs and all boss assets retain their authored dimensions
   for(const name of ['nightmare_projectile','nightmare_cloud'])assert.deepEqual(pngSize(`assets/bosses/common/${name}.png`),name.endsWith('projectile')?[384,64]:[2304,384]);
 });
 
-test('sprite integration preserves direction, timing, radius and procedural fallback contracts',()=>{
+test('sprite integration preserves direction and timing without legacy model fallbacks',()=>{
   const visuals=fs.readFileSync('enemy-visuals.js','utf8'),game=fs.readFileSync('game.js','utf8'),server=fs.readFileSync('server.js','utf8');
   assert.match(visuals,/ENEMY_SPRITE_ANGLE_OFFSET=0/);
   assert.match(visuals,/EXPLODER_EXPLOSION_DIAMETER:290/);
@@ -35,8 +35,8 @@ test('sprite integration preserves direction, timing, radius and procedural fall
   assert.match(game,/Math\.atan2\(b\.vy,b\.vx\)/);
   assert.match(game,/kind:'shooterBullet'/);
   assert.match(server,/kind:'shooterBullet'/);
-  assert.match(visuals,/if\(drawMobSprite\(ctx,e,time,hit\)\)return true/);
-  assert.match(visuals,/else if\(e\.type==='swarm'\)swarm/);
+  assert.match(visuals,/window\.drawEnemyModel=.*=>drawMobSprite/);
+  assert.doesNotMatch(visuals,/else if\(e\.type==='swarm'\)swarm|toxicBoss\(ctx/);
   for(const type of ['melee','toxic','trapper','boss_titan','boss_warden','boss_void','toxic_boss_spore','toxic_boss_fog','toxic_boss_core'])assert.match(visuals,new RegExp(`${type}:\\{size:`));
   assert.match(game,/visual:'boss_titan'/);assert.match(game,/visual:'boss_void'/);
   assert.match(game,/kind:'boss_warden'/);assert.match(game,/kind:'boss_void'/);
