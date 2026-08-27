@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="style.css?v=31" />
+    <link rel="stylesheet" href="style.css?v=32" />
   </head>
   <body>
     <main id="game-shell">
@@ -21,6 +21,7 @@
           <div class="menu-sigil"><i></i><b>S</b><i></i></div><div class="eyebrow" data-i18n="account.cloud">POSTĘP W CHMURZE</div><h2 data-i18n="account.title">TWOJE KONTO</h2>
           <p data-i18n="account.subtitle">Zaloguj się, aby zapisywać postępy, statystyki i odblokowane elementy na koncie.</p>
           <div class="account-loading" id="accountLoading"><span></span><b data-i18n="account.checking">SPRAWDZANIE SESJI…</b></div>
+          <div class="account-initial-error hidden" id="accountInitialError" role="alert"><strong id="accountInitialErrorTitle"></strong><p id="accountInitialErrorText"></p><button type="button" id="accountInitialRetry" data-i18n="account.sessionCheckRetry">PONÓW</button></div>
           <div class="account-tabs"><button type="button" class="active" data-account-tab="login" data-i18n="account.loginTab">LOGOWANIE</button><button type="button" class="secondary-btn" data-account-tab="register" data-i18n="account.registerTab">REJESTRACJA</button></div>
           <form class="account-form" data-form="login" novalidate><label><span data-i18n="account.identifier">LOGIN LUB E-MAIL</span><input name="identifier" autocomplete="username" maxlength="120"></label><label><span data-i18n="account.password">HASŁO</span><input name="password" type="password" maxlength="128" autocomplete="current-password"></label><button type="submit"><span data-i18n="account.signIn">ZALOGUJ SIĘ</span> <span>→</span></button></form>
           <form class="account-form hidden" data-form="register" novalidate><label><span data-i18n="account.login">LOGIN</span><input name="login" maxlength="24" autocomplete="username"></label><label><span data-i18n="account.email">E-MAIL</span><input name="email" maxlength="120" autocomplete="email"></label><label><span data-i18n="account.password">HASŁO</span><input name="password" type="password" maxlength="128" autocomplete="new-password"><small data-i18n="account.passwordHint">Minimum 8 znaków.</small></label><button type="submit"><span data-i18n="account.create">UTWÓRZ KONTO</span> <span>→</span></button></form>
@@ -208,8 +209,8 @@
       </section>
       <section class="multiplayer-waiting hidden" id="multiplayerWaiting"><div class="eyebrow" data-i18n="multiplayer.teamLevelUp">AWANS DRUŻYNY</div><strong data-i18n="multiplayer.waitingUpgrade">CZEKANIE NA POZOSTAŁYCH GRACZY</strong><span data-i18n="multiplayer.ownUpgrade">Każdy gracz wybiera własne ulepszenie.</span></section>
     </main>
-    <script src="i18n.js?v=4"></script>
-    <script src="account-client.js?v=5"></script>
+    <script src="i18n.js?v=5"></script>
+    <script src="account-client.js?v=6"></script>
     <script src="save-state.js?v=2"></script>
     <script src="fresh-run-state.js?v=2"></script>
     <script src="shared-game-data.js?v=1"></script>
