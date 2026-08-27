@@ -593,7 +593,8 @@
   function apply(scope=root.document){if(!scope?.querySelectorAll)return;const nodes=scope.querySelectorAll('[data-i18n],[data-i18n-placeholder],[data-i18n-aria-label],[data-i18n-title]');for(const node of nodes){if(node.dataset.i18n)node.textContent=t(node.dataset.i18n);if(node.dataset.i18nPlaceholder)node.placeholder=t(node.dataset.i18nPlaceholder);if(node.dataset.i18nAriaLabel)node.setAttribute('aria-label',t(node.dataset.i18nAriaLabel));if(node.dataset.i18nTitle)node.title=t(node.dataset.i18nTitle)}root.document.documentElement.lang=language;for(const button of scope.querySelectorAll('[data-language]'))button.classList.toggle('active',button.dataset.language===language)}
   function setLanguage(next){language=next==='en'?'en':'pl';try{root.localStorage?.setItem(STORAGE_KEY,language)}catch{}apply();for(const callback of listeners)callback(language);if(root.dispatchEvent&&root.CustomEvent)root.dispatchEvent(new root.CustomEvent('swarm-language-changed',{detail:{language}}));return language}
   function onChange(callback){listeners.add(callback);return()=>listeners.delete(callback)}
+  function bossName(map,tier){return t(`boss.${map}.${tier}`)}
   function bind(scope=root.document){if(!scope?.querySelectorAll)return;for(const button of scope.querySelectorAll('[data-language]'))if(!button.dataset.i18nBound){button.dataset.i18nBound='1';button.addEventListener('click',()=>setLanguage(button.dataset.language))}apply(scope)}
   if(root.document)Promise.resolve().then(()=>bind(root.document));
-  return{STORAGE_KEY,dictionaries,getLanguage:()=>language,setLanguage,t,has,apply,onChange,bind};
+  return{STORAGE_KEY,dictionaries,getLanguage:()=>language,setLanguage,t,has,apply,onChange,bind,bossName};
 });
