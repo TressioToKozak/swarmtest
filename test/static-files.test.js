@@ -25,7 +25,7 @@ test('HTTP server serves every local JavaScript referenced by index.html',async 
     assert.ok(response.body.length>0,`${source} should have a non-empty body`);
   }
   const before=(dependency,consumer)=>assert.ok(files.indexOf(dependency)>=0&&files.indexOf(dependency)<files.indexOf(consumer),`${dependency} must load before ${consumer}`);
-  for(const dependency of['fresh-run-state.js','shared-game-data.js','shared-mechanics.js','shared-map-data.js','shared-collision.js','asset-gate.js','nav-prewarm-policy.js','spatial-grid.js','enemy-los-policy.js','map-data.js','map-visuals.js','enemy-visuals.js'])before(dependency,'game.js');
+  for(const dependency of['i18n.js','fresh-run-state.js','shared-game-data.js','shared-mechanics.js','shared-map-data.js','shared-collision.js','asset-gate.js','nav-prewarm-policy.js','spatial-grid.js','enemy-los-policy.js','map-data.js','map-visuals.js','enemy-visuals.js'])before(dependency,'game.js');
   for(const dependency of['game.js','multiplayer-socket-state.js','multiplayer-client-utils.js','multiplayer.js','multiplayer-visual-state.js'])before(dependency,'multiplayer-game.js');
 });
 
