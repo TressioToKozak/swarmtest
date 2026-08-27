@@ -3,7 +3,21 @@
   "version": "1.0.0",
   "private": true,
   "description": "Swarmfall with an authoritative WebSocket multiplayer server",
-  "scripts": {"start": "node server.js", "test": "node --test test/*.test.js"},
-  "dependencies": {"ws": "^8.18.3"},
-  "engines": {"node": ">=20"}
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js",
+    "lint": "eslint server.js account-store.js network-security.js test/security-hardening.test.js",
+    "format": "prettier --write server.js account-store.js network-security.js test/security-hardening.test.js",
+    "format:check": "prettier --check server.js account-store.js network-security.js test/security-hardening.test.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "eslint": "^10.0.0",
+    "prettier": "^3.6.2"
+  }
 }
