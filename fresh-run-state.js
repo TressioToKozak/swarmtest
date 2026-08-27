@@ -1,4 +1,5 @@
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.SwarmFreshRunState=api})(typeof globalThis!=='undefined'?globalThis:this,()=>{
   function create({world,character,mode='normal',random=Math.random}){const eliteBase=mode==='nightmare'?8:mode==='hard'?6:4;return{elapsed:0,spawnClock:0,shotClock:0,screenShake:0,flowClock:0,statsClock:0,saveClock:0,directorPhase:-1,waveNumber:0,waveRemaining:0,waveBreak:0,bannerTimer:0,bossTierSpawned:0,eliteBudget:eliteBase+Math.floor(random()*2),eliteSpawned:0,eliteNextAt:65+random()*25,levelChoicesQueued:0,bossChoicesQueued:0,awardedMinutes:0,upgradeOfferKeys:[],upgradeRerolled:[],nextEventAt:150,worldEvent:null,eventHistory:[],cycleStartedAt:0,runKillTypes:new Set(),player:{x:world.w/2,y:world.h/2,r:15,speed:character.speed,hp:character.hp,maxHp:character.hp,xp:0,level:1,nextXp:24,kills:0,invuln:0},skills:{q:{cd:0,max:5},e:{cd:0,max:9},r:{cd:0,max:28}},enemies:[],bullets:[],enemyBullets:[],orbs:[],loot:[],particles:[],rings:[],playerEchoes:[],damageNumbers:[]}}
-  return{create}
+  function startPolicy(intent){return{clearSingleplayerSave:intent==='singleplayer',resetRuntime:true}}
+  return{create,startPolicy}
 });
