@@ -10,7 +10,7 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: node --check server.js && node --check game.js
+      - run: npm run syntax:check
       - run: npm run lint
       - run: npm run format:check
       - run: npm test

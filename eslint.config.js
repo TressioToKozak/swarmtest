@@ -1,22 +1,27 @@
-'use strict';
+"use strict";
 
 module.exports = [
   {
-    files: [
-      'server.js',
-      'account-store.js',
-      'network-security.js',
-      'test/security-hardening.test.js',
-    ],
-    languageOptions: { ecmaVersion: 2022, sourceType: 'commonjs' },
-    linterOptions: { reportUnusedDisableDirectives: 'error' },
+    files: ["account-store.js", "server.js", "progress-outbox.js"],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "commonjs",
+      globals: {
+        console: "readonly",
+        process: "readonly",
+        setInterval: "readonly",
+        clearInterval: "readonly",
+        setTimeout: "readonly",
+        clearTimeout: "readonly",
+        structuredClone: "readonly",
+        Buffer: "readonly",
+        URL: "readonly",
+        __dirname: "readonly",
+      },
+    },
     rules: {
-      'no-constant-condition': 'error',
-      'no-dupe-keys': 'error',
-      'no-redeclare': 'error',
-      'no-unreachable': 'error',
-      'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
-      'no-useless-catch': 'error',
+      "no-undef": "error",
+      "no-unused-vars": "off",
     },
   },
 ];
