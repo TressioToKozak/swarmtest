@@ -156,6 +156,18 @@ test("sliding limiter prunes expired unique keys while retaining active limits",
   assert.equal(limiter.take("active"), true);
 });
 
+test("sliding limiter keeps a spammed bucket bounded and recovers after its window", () => {
+  let now = 0;
+  const limiter = new SlidingWindowLimiter({ limit: 2, windowMs: 100, now: () => now });
+  assert.equal(limiter.take("attacker"), false);
+  assert.equal(limiter.take("attacker"), false);
+  for (let request = 0; request < 100_000; request++) assert.equal(limiter.take("attacker"), true);
+  assert.equal(limiter.buckets.get("attacker").length, 2);
+  now = 101;
+  assert.equal(limiter.take("attacker"), false);
+  assert.equal(limiter.buckets.get("attacker").length, 1);
+});
+
 test("origin allowlist is strict in production and local-only by default", () => {
   assert.equal(originAllowed(undefined, "https://game.example"), true);
   assert.equal(originAllowed("https://game.example", "https://game.example"), true);
