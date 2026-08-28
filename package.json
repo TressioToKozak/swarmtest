@@ -3,7 +3,16 @@
   "version": "1.0.0",
   "private": true,
   "description": "Swarmfall with an authoritative WebSocket multiplayer server",
-  "scripts": {"start": "node server.js", "test": "node --test test/*.test.js"},
-  "dependencies": {"ws": "^8.18.3"},
-  "engines": {"node": ">=20"}
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js",
+    "lint": "node --check account-store.js && node --check server.js && node --check account-client.js && node --check game.js",
+    "format:check": "node scripts/check-format.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
 }
