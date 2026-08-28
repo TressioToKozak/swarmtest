@@ -74,9 +74,7 @@ function passwordMatches(password, user) {
     crypto.scrypt(password, user.passwordSalt, 64, (error, key) => {
       if (error) return resolve(false);
       try {
-        resolve(
-          crypto.timingSafeEqual(Buffer.from(user.passwordHash, "hex"), key),
-        );
+        resolve(crypto.timingSafeEqual(Buffer.from(user.passwordHash, "hex"), key));
       } catch {
         resolve(false);
       }
@@ -87,30 +85,21 @@ function cleanProgress(progress) {
   const cleaned = Object.fromEntries(
     Object.entries(progress || {}).filter(
       ([key, value]) =>
-        ACCOUNT_PROGRESS_KEY_SET.has(key) &&
-        typeof value === "string" &&
-        value.length < 800000,
+        ACCOUNT_PROGRESS_KEY_SET.has(key) && typeof value === "string" && value.length < 800000,
     ),
   );
   if (cleaned["swarmfall-stats"])
-    cleaned["swarmfall-stats"] = JSON.stringify(
-      parseStats(cleaned["swarmfall-stats"]),
-    );
+    cleaned["swarmfall-stats"] = JSON.stringify(parseStats(cleaned["swarmfall-stats"]));
   if (cleaned["swarmfall-achievements-v1"])
     cleaned["swarmfall-achievements-v1"] = JSON.stringify(
       parseList(cleaned["swarmfall-achievements-v1"], ACHIEVEMENT_IDS),
     );
   if (cleaned["swarmfall-unlocked"])
     cleaned["swarmfall-unlocked"] = JSON.stringify(
-      parseList(
-        cleaned["swarmfall-unlocked"],
-        new Set(Object.keys(CHARACTER_COSTS)),
-      ),
+      parseList(cleaned["swarmfall-unlocked"], new Set(Object.keys(CHARACTER_COSTS))),
     );
   if (cleaned["swarmfall-modes"])
-    cleaned["swarmfall-modes"] = JSON.stringify(
-      parseList(cleaned["swarmfall-modes"], MODE_IDS),
-    );
+    cleaned["swarmfall-modes"] = JSON.stringify(parseList(cleaned["swarmfall-modes"], MODE_IDS));
   if (cleaned["swarmfall-nightmare-cosmetic"] !== "void-aura")
     delete cleaned["swarmfall-nightmare-cosmetic"];
   return cleaned;
@@ -136,8 +125,7 @@ function parseStats(raw) {
   try {
     parsed = JSON.parse(raw || "{}");
   } catch {}
-  const number = (key) =>
-      Number.isFinite(parsed[key]) ? Math.max(0, Math.floor(parsed[key])) : 0,
+  const number = (key) => (Number.isFinite(parsed[key]) ? Math.max(0, Math.floor(parsed[key])) : 0),
     games = parsed.characterGames || {};
   return {
     bestTime: number("bestTime"),
@@ -146,15 +134,9 @@ function parseStats(raw) {
     totalKills: number("totalKills"),
     coins: number("coins"),
     characterGames: {
-      scout: Number.isFinite(games.scout)
-        ? Math.max(0, Math.floor(games.scout))
-        : 0,
-      warrior: Number.isFinite(games.warrior)
-        ? Math.max(0, Math.floor(games.warrior))
-        : 0,
-      druid: Number.isFinite(games.druid)
-        ? Math.max(0, Math.floor(games.druid))
-        : 0,
+      scout: Number.isFinite(games.scout) ? Math.max(0, Math.floor(games.scout)) : 0,
+      warrior: Number.isFinite(games.warrior) ? Math.max(0, Math.floor(games.warrior)) : 0,
+      druid: Number.isFinite(games.druid) ? Math.max(0, Math.floor(games.druid)) : 0,
     },
   };
 }
@@ -163,11 +145,7 @@ function parseList(raw, allowed) {
   try {
     parsed = JSON.parse(raw || "[]");
   } catch {}
-  return [
-    ...new Set(
-      Array.isArray(parsed) ? parsed.filter((value) => allowed.has(value)) : [],
-    ),
-  ];
+  return [...new Set(Array.isArray(parsed) ? parsed.filter((value) => allowed.has(value)) : [])];
 }
 function writeStats(progress, stats) {
   progress["swarmfall-stats"] = JSON.stringify(stats);
@@ -182,14 +160,8 @@ function applyProgressOperation(progress, operation) {
   const type = operation?.type,
     payload = operation?.payload || {},
     stats = parseStats(progress["swarmfall-stats"]),
-    achievements = parseList(
-      progress["swarmfall-achievements-v1"],
-      ACHIEVEMENT_IDS,
-    ),
-    unlocked = parseList(
-      progress["swarmfall-unlocked"],
-      new Set(Object.keys(CHARACTER_COSTS)),
-    ),
+    achievements = parseList(progress["swarmfall-achievements-v1"], ACHIEVEMENT_IDS),
+    unlocked = parseList(progress["swarmfall-unlocked"], new Set(Object.keys(CHARACTER_COSTS))),
     modes = parseList(progress["swarmfall-modes"], MODE_IDS);
   if (type === "awardCurrency") {
     const amount = Math.floor(payload.amount);
@@ -215,15 +187,11 @@ function applyProgressOperation(progress, operation) {
     stats.totalTime = Math.max(0, stats.totalTime) + time;
     stats.bestKills = Math.max(stats.bestKills, kills);
     stats.totalKills = Math.max(0, stats.totalKills) + kills;
-    stats.characterGames[character] =
-      Math.max(0, stats.characterGames[character]) + 1;
+    stats.characterGames[character] = Math.max(0, stats.characterGames[character]) + 1;
     writeStats(progress, stats);
   } else if (type === "unlockAchievement") {
     const id = String(payload.id || "");
-    if (
-      !ACHIEVEMENT_IDS.has(id) ||
-      ["map_1", "hard_clear", "nightmare_clear"].includes(id)
-    )
+    if (!ACHIEVEMENT_IDS.has(id) || ["map_1", "hard_clear", "nightmare_clear"].includes(id))
       throw progressionError("INVALID_PROGRESSION");
     if (!achievements.includes(id)) {
       achievements.push(id);
@@ -258,11 +226,7 @@ function applyProgressOperation(progress, operation) {
     progress["swarmfall-modes"] = JSON.stringify(modes);
     const earned = [
       map === "ruins" ? "map_1" : null,
-      mode === "hard"
-        ? "hard_clear"
-        : mode === "nightmare"
-          ? "nightmare_clear"
-          : null,
+      mode === "hard" ? "hard_clear" : mode === "nightmare" ? "nightmare_clear" : null,
     ].filter(Boolean);
     for (const id of earned)
       if (!achievements.includes(id)) {
@@ -273,8 +237,7 @@ function applyProgressOperation(progress, operation) {
       progress["swarmfall-achievements-v1"] = JSON.stringify(achievements);
       writeStats(progress, stats);
     }
-    if (mode === "nightmare")
-      progress["swarmfall-nightmare-cosmetic"] = "void-aura";
+    if (mode === "nightmare") progress["swarmfall-nightmare-cosmetic"] = "void-aura";
   } else throw progressionError("INVALID_PROGRESSION");
   return progress;
 }
@@ -302,8 +265,7 @@ function mergeMultiplayerStats(raw, result) {
   stats.bestKills = Math.max(stats.bestKills || 0, kills);
   stats.totalKills = Math.max(0, stats.totalKills || 0) + kills;
   stats.coins = Math.max(0, stats.coins || 0) + coins;
-  stats.characterGames[character] =
-    Math.max(0, stats.characterGames[character] || 0) + 1;
+  stats.characterGames[character] = Math.max(0, stats.characterGames[character] || 0) + 1;
   return JSON.stringify(stats);
 }
 
@@ -318,15 +280,12 @@ class AccountStore {
     try {
       const raw = await fs.readFile(this.file, "utf8"),
         parsed = JSON.parse(raw);
-      if (!validDatabase(parsed))
-        throw new Error("Nieprawidłowa struktura bazy kont.");
+      if (!validDatabase(parsed)) throw new Error("Nieprawidłowa struktura bazy kont.");
       this.data = parsed;
       for (const user of this.data.users) {
         user.progress = cleanProgress(user.progress);
         user.revision =
-          Number.isSafeInteger(user.revision) && user.revision >= 0
-            ? user.revision
-            : 0;
+          Number.isSafeInteger(user.revision) && user.revision >= 0 ? user.revision : 0;
       }
       return this.data;
     } catch (error) {
@@ -334,9 +293,7 @@ class AccountStore {
         this.data = emptyDatabase();
         return this.data;
       }
-      const controlled = new Error(
-        "Baza kont jest uszkodzona lub niedostępna.",
-      );
+      const controlled = new Error("Baza kont jest uszkodzona lub niedostępna.");
       controlled.code = "ACCOUNT_STORE_CORRUPTED";
       controlled.cause = error;
       throw controlled;
@@ -378,9 +335,7 @@ class AccountStore {
         this.data = draft;
         return null;
       }
-      const user = data.users.find(
-        (candidate) => candidate.id === session.userId,
-      );
+      const user = data.users.find((candidate) => candidate.id === session.userId);
       return user
         ? {
             id: user.id,
@@ -396,11 +351,8 @@ class AccountStore {
       if (!user) throw progressionError("ACCOUNT_MISSING");
       const revision = user.revision || 0,
         id = String(operation?.id || "");
-      if (!/^[a-zA-Z0-9_-]{8,80}$/.test(id))
-        throw progressionError("INVALID_PROGRESSION");
-      user.appliedOperations = Array.isArray(user.appliedOperations)
-        ? user.appliedOperations
-        : [];
+      if (!/^[a-zA-Z0-9_-]{8,80}$/.test(id)) throw progressionError("INVALID_PROGRESSION");
+      user.appliedOperations = Array.isArray(user.appliedOperations) ? user.appliedOperations : [];
       if (user.appliedOperations.includes(id))
         return {
           saved: true,
@@ -430,9 +382,7 @@ class AccountStore {
     return this.mutate((data) => {
       const user = data.users.find((candidate) => candidate.id === userId);
       if (!user) return { applied: false, reason: "account-missing" };
-      user.settledMatches = Array.isArray(user.settledMatches)
-        ? user.settledMatches
-        : [];
+      user.settledMatches = Array.isArray(user.settledMatches) ? user.settledMatches : [];
       const settlementKey = `${matchId}:${result.playerId}`;
       if (user.settledMatches.includes(settlementKey))
         return {

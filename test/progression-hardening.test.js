@@ -4,11 +4,7 @@ const test = require("node:test"),
   fs = require("node:fs"),
   os = require("node:os"),
   path = require("node:path");
-const {
-  AccountStore,
-  mergeClientProgress,
-  applyProgressOperation,
-} = require("../account-store");
+const { AccountStore, mergeClientProgress, applyProgressOperation } = require("../account-store");
 const {
   SlidingWindowLimiter,
   originAllowed,
@@ -49,9 +45,7 @@ test("validated single-player achievement, map and purchase operations are monot
     progress,
     operation("operation-achievement", "unlockAchievement", { id: "boss_1" }),
   );
-  assert.deepEqual(JSON.parse(progress["swarmfall-achievements-v1"]), [
-    "boss_1",
-  ]);
+  assert.deepEqual(JSON.parse(progress["swarmfall-achievements-v1"]), ["boss_1"]);
   assert.equal(stats(progress).coins, 35);
   progress = applyProgressOperation(
     progress,
@@ -65,9 +59,7 @@ test("validated single-player achievement, map and purchase operations are monot
     progress,
     operation("operation-map", "completeMap", { map: "ruins", mode: "normal" }),
   );
-  assert.ok(
-    JSON.parse(progress["swarmfall-achievements-v1"]).includes("map_1"),
-  );
+  assert.ok(JSON.parse(progress["swarmfall-achievements-v1"]).includes("map_1"));
   assert.ok(JSON.parse(progress["swarmfall-modes"]).includes("normal"));
   assert.deepEqual(accountEntitlements(progress), {
     unlocked: ["scout", "warrior"],
@@ -96,10 +88,7 @@ test("progress operations reject unknown ids, impossible purchase and arbitrary 
   );
   assert.throws(
     () =>
-      applyProgressOperation(
-        {},
-        operation("forged-coins", "awardCurrency", { amount: 999999 }),
-      ),
+      applyProgressOperation({}, operation("forged-coins", "awardCurrency", { amount: 999999 })),
     /INVALID_PROGRESSION/,
   );
 });
@@ -169,18 +158,9 @@ test("sliding limiter prunes expired unique keys while retaining active limits",
 
 test("origin allowlist is strict in production and local-only by default", () => {
   assert.equal(originAllowed(undefined, "https://game.example"), true);
-  assert.equal(
-    originAllowed("https://game.example", "https://game.example"),
-    true,
-  );
-  assert.equal(
-    originAllowed("http://localhost:8080", "https://game.example"),
-    false,
-  );
-  assert.equal(
-    originAllowed("https://evil.example", "https://game.example"),
-    false,
-  );
+  assert.equal(originAllowed("https://game.example", "https://game.example"), true);
+  assert.equal(originAllowed("http://localhost:8080", "https://game.example"), false);
+  assert.equal(originAllowed("https://evil.example", "https://game.example"), false);
   assert.equal(originAllowed("http://localhost:8080", ""), true);
   assert.equal(originAllowed("https://evil.example", ""), false);
 });
@@ -200,14 +180,8 @@ test("forwarded address and protocol require trusted proxy mode", () => {
 
 test("build slot CSS preserves square slot and icon geometry", () => {
   const css = fs.readFileSync(path.join(__dirname, "..", "style.css"), "utf8");
-  assert.match(
-    css,
-    /\.item-slot,\.augment-slot\{aspect-ratio:1\/1;height:auto/,
-  );
-  assert.match(
-    css,
-    /\.slot>\.item-svg,\.slot>\.augment-svg\{[^}]*aspect-ratio:1\/1/,
-  );
+  assert.match(css, /\.item-slot,\.augment-slot\{aspect-ratio:1\/1;height:auto/);
+  assert.match(css, /\.slot>\.item-svg,\.slot>\.augment-svg\{[^}]*aspect-ratio:1\/1/);
   assert.match(css, /max-width:72%;max-height:72%/);
 });
 
@@ -219,19 +193,14 @@ test("production WebSocket allowlist rejects an unlisted browser origin with 403
       accountFile: path.join(directory, "accounts.json"),
       allowedOrigins: "https://game.example",
     });
-  await new Promise((resolve) =>
-    runtime.server.listen(0, "127.0.0.1", resolve),
-  );
+  await new Promise((resolve) => runtime.server.listen(0, "127.0.0.1", resolve));
   t.after(() => new Promise((resolve) => runtime.server.close(resolve)));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
-  const socket = new WebSocket(
-    `ws://127.0.0.1:${runtime.server.address().port}`,
-    { headers: { Origin: "http://localhost:8080" } },
-  );
+  const socket = new WebSocket(`ws://127.0.0.1:${runtime.server.address().port}`, {
+    headers: { Origin: "http://localhost:8080" },
+  });
   const status = await new Promise((resolve, reject) => {
-    socket.once("unexpected-response", (_, response) =>
-      resolve(response.statusCode),
-    );
+    socket.once("unexpected-response", (_, response) => resolve(response.statusCode));
     socket.once("open", () => reject(new Error("unlisted origin connected")));
     socket.once("error", () => {});
   });
@@ -250,20 +219,14 @@ test("expired token lookup removes the session from persistent storage", async (
     file = path.join(directory, "accounts.json"),
     store = new AccountStore(file),
     token = "expired-token",
-    key = require("node:crypto")
-      .createHash("sha256")
-      .update(token)
-      .digest("hex");
+    key = require("node:crypto").createHash("sha256").update(token).digest("hex");
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   await store.mutate((data) => {
     data.users.push({ id: "u", login: "u", revision: 0, progress: {} });
     data.sessions[key] = { userId: "u", expiresAt: 0 };
   });
   assert.equal(await store.accountForToken(token), null);
-  assert.equal(
-    JSON.parse(fs.readFileSync(file, "utf8")).sessions[key],
-    undefined,
-  );
+  assert.equal(JSON.parse(fs.readFileSync(file, "utf8")).sessions[key], undefined);
 });
 
 test("server shuffle and lobby codes exclusively use injected RNG", () => {
@@ -298,10 +261,7 @@ test("active WebSocket connection limiter releases slots and isolates proxy-deri
 
 test("map completion achievements are not posted as rejected standalone operations", () => {
   const source = fs.readFileSync(path.join(__dirname, "..", "game.js"), "utf8");
-  assert.match(
-    source,
-    /\['map_1','hard_clear','nightmare_clear'\]\.includes\(id\)/,
-  );
+  assert.match(source, /\['map_1','hard_clear','nightmare_clear'\]\.includes\(id\)/);
   assert.match(source, /accountProgress\('completeMap'/);
 });
 
@@ -313,9 +273,7 @@ test("WebSocket transport enforces per-IP capacity and releases a disconnected s
       accountFile: path.join(directory, "accounts.json"),
       wsLimits: { maxConnectionsPerIp: 1 },
     });
-  await new Promise((resolve) =>
-    runtime.server.listen(0, "127.0.0.1", resolve),
-  );
+  await new Promise((resolve) => runtime.server.listen(0, "127.0.0.1", resolve));
   t.after(() => new Promise((resolve) => runtime.server.close(resolve)));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   const url = `ws://127.0.0.1:${runtime.server.address().port}`,
@@ -326,9 +284,7 @@ test("WebSocket transport enforces per-IP capacity and releases a disconnected s
   });
   const blocked = new WebSocket(url),
     status = await new Promise((resolve, reject) => {
-      blocked.once("unexpected-response", (_, response) =>
-        resolve(response.statusCode),
-      );
+      blocked.once("unexpected-response", (_, response) => resolve(response.statusCode));
       blocked.once("open", () => reject(new Error("capacity bypassed")));
       blocked.once("error", () => {});
     });
@@ -351,9 +307,7 @@ test("reconnect and create-lobby transport limiters close abusive clients", asyn
       accountFile: path.join(directory, "accounts.json"),
       wsLimits: { reconnectLimit: 1, createLobbyLimit: 1 },
     });
-  await new Promise((resolve) =>
-    runtime.server.listen(0, "127.0.0.1", resolve),
-  );
+  await new Promise((resolve) => runtime.server.listen(0, "127.0.0.1", resolve));
   t.after(() => new Promise((resolve) => runtime.server.close(resolve)));
   t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   const url = `ws://127.0.0.1:${runtime.server.address().port}`;
