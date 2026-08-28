@@ -3441,7 +3441,11 @@ function createStaticHandler({
                 userId: user.id,
                 expiresAt: Date.now() + SESSION_DAYS * 864e5,
               };
-              return { user: { login, email }, progress: {}, revision: 0 };
+              return {
+                user: { id: user.id, login, email },
+                progress: {},
+                revision: 0,
+              };
             });
           return jsonResponse(res, 201, result, {
             "set-cookie": cookieHeader(
@@ -3483,7 +3487,7 @@ function createStaticHandler({
                 expiresAt: Date.now() + SESSION_DAYS * 864e5,
               };
               return {
-                user: { login: user.login, email: user.email },
+                user: { id: user.id, login: user.login, email: user.email },
                 progress: cleanProgress(user.progress),
                 revision: user.revision || 0,
               };
@@ -3519,7 +3523,7 @@ function createStaticHandler({
           const result = await accountStore.read((data) => {
             const user = data.users.find((u) => u.id === auth.user.id);
             return {
-              user: { login: user.login, email: user.email },
+              user: { id: user.id, login: user.login, email: user.email },
               progress: cleanProgress(user.progress),
               revision: user.revision || 0,
             };

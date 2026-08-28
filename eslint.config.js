@@ -2,7 +2,12 @@
 
 module.exports = [
   {
-    files: ["account-store.js", "server.js", "progress-outbox.js"],
+    files: [
+      "account-store.js",
+      "server.js",
+      "account-client.js",
+      "progress-outbox.js",
+    ],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "commonjs",
@@ -17,6 +22,10 @@ module.exports = [
         Buffer: "readonly",
         URL: "readonly",
         __dirname: "readonly",
+        module: "readonly",
+        require: "readonly",
+        globalThis: "readonly",
+        CustomEvent: "readonly",
       },
     },
     rules: {
