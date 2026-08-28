@@ -43,13 +43,13 @@ test("win, death and quit share one guarded single-player result finalizer", () 
     operations = [],
     harness = Function(
       "accountProgress",
-      `let singleplayerResultState='idle',elapsed=125,player={kills:42},chosenCharacter='warrior';${helper};return{queueSingleplayerResultOnce,reset:()=>singleplayerResultState='idle',state:()=>singleplayerResultState}`,
+      `let singleplayerResultState='idle',singleplayerResultPayload=null,elapsed=125,player={kills:42},chosenCharacter='warrior';${helper};return{queueSingleplayerResultOnce,reset:()=>singleplayerResultState='idle',state:()=>singleplayerResultState}`,
     )((type, payload, onEnqueued) => {
       operations.push({ type, payload });
       onEnqueued();
     });
   assert.equal(harness.queueSingleplayerResultOnce(), true);
-  assert.equal(harness.queueSingleplayerResultOnce(), false);
+  assert.equal(harness.queueSingleplayerResultOnce(), true);
   assert.deepEqual(operations, [
     { type: "awardSingleplayerResult", payload: { time: 125, kills: 42, character: "warrior" } },
   ]);
@@ -59,8 +59,8 @@ test("win, death and quit share one guarded single-player result finalizer", () 
     ["gameOver", "visibleTerrain"],
   ]) {
     const flow = section(name, next);
-    assert.match(flow, /queueSingleplayerResultOnce\(\)/);
-    assert.match(flow, /if\(!running\|\|!queueSingleplayerResultOnce\(\)\)return/);
+    assert.match(flow, /beginSingleplayerTerminal\(\)|retrySingleplayerResultAndReload\(\)/);
+    assert.doesNotMatch(flow, /if\(!running\|\|!queueSingleplayerResultOnce\(\)\)return/);
     assert.doesNotMatch(flow, /accountProgress\('awardSingleplayerResult'/);
   }
   harness.reset();
@@ -71,6 +71,7 @@ test("win, death and quit share one guarded single-player result finalizer", () 
 test("a full outbox leaves result finalization retryable without duplicate successful IDs", async () => {
   const helper = section("queueSingleplayerResultOnce", "renderDifficulty"),
     storage = memoryStorage(),
+    cleanup = { clears: 0, reloads: 0 },
     sendState = { offline: true },
     pending = outbox.create({
       storage,
@@ -91,29 +92,70 @@ test("a full outbox leaves result finalization retryable without duplicate succe
     pending.enqueue("awardCurrency", { amount: 1 });
   const harness = Function(
     "accountProgress",
-    `let singleplayerResultState='idle',elapsed=125,player={kills:42},chosenCharacter='warrior';${helper};return{queueSingleplayerResultOnce,state:()=>singleplayerResultState}`,
-  )((type, payload, onEnqueued, onRejected) => {
-    try {
-      pending.enqueue(type, payload);
-      onEnqueued();
-    } catch (error) {
-      onRejected(error);
-    }
-  });
+    "clearGameSave",
+    "location",
+    `let singleplayerResultState='idle',singleplayerResultPayload=null,elapsed=125,player={kills:42},chosenCharacter='warrior';${helper};return{queueSingleplayerResultOnce,retrySingleplayerResultAndReload,state:()=>singleplayerResultState}`,
+  )(
+    (type, payload, onEnqueued, onRejected) => {
+      try {
+        pending.enqueue(type, payload);
+        onEnqueued();
+      } catch (error) {
+        onRejected(error);
+      }
+    },
+    () => cleanup.clears++,
+    { reload: () => cleanup.reloads++ },
+  );
   assert.doesNotThrow(() => assert.equal(harness.queueSingleplayerResultOnce(), false));
   assert.equal(harness.state(), "idle");
   await pending.drain();
   sendState.offline = false;
   await pending.drain();
+  harness.retrySingleplayerResultAndReload();
   assert.equal(harness.queueSingleplayerResultOnce(), true);
-  assert.equal(harness.queueSingleplayerResultOnce(), false);
   assert.equal(harness.state(), "queued");
+  assert.deepEqual(cleanup, { clears: 1, reloads: 1 });
   assert.equal(
     pending.pending().filter((operation) => operation.type === "awardSingleplayerResult").length,
     1,
   );
   pending.cancel();
   await pending.drain();
+});
+
+test("death with a full outbox stops once and does not retry from later frames", () => {
+  const helper = section("queueSingleplayerResultOnce", "renderDifficulty"),
+    attempts = [],
+    harness = Function(
+      "accountProgress",
+      "clearGameSave",
+      "location",
+      `let singleplayerResultState='idle',singleplayerResultPayload=null,elapsed=125,player={kills:42},chosenCharacter='warrior',running=true,paused=false,transitions=0;${helper};function terminalFrame(){if(!running)return;transitions++;beginSingleplayerTerminal()}return{terminalFrame,state:()=>({running,paused,transitions,singleplayerResultState})}`,
+    )(
+      (type, payload, onEnqueued, onRejected) => {
+        attempts.push({ type, payload });
+        onRejected({ code: "OUTBOX_FULL" });
+      },
+      () => {},
+      { reload() {} },
+    );
+  harness.terminalFrame();
+  for (let frame = 0; frame < 100; frame++) harness.terminalFrame();
+  assert.deepEqual(harness.state(), {
+    running: false,
+    paused: true,
+    transitions: 1,
+    singleplayerResultState: "idle",
+  });
+  assert.equal(attempts.length, 1);
+});
+
+test("final-boss victory enters a terminal retryable state even when enqueue is full", () => {
+  const win = section("winMap", "quitToMenu");
+  assert.match(win, /if\(!running\)return;const resultQueued=beginSingleplayerTerminal\(\)/);
+  assert.match(win, /if\(resultQueued\)clearGameSave\(\)/);
+  assert.doesNotMatch(win, /if\(!resultQueued\)return/);
 });
 
 test("account progress failures stay contained outside gameplay", async () => {
