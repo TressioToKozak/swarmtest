@@ -3269,8 +3269,9 @@ class SlidingWindowLimiter {
       this.buckets.set(key, times);
     }
     while (times.length && now - times[0] >= this.windowMs) times.shift();
+    if (times.length >= this.limit) return true;
     times.push(now);
-    return times.length > this.limit;
+    return false;
   }
 }
 function trustedProxy(value = process.env.TRUST_PROXY) {
@@ -3370,6 +3371,7 @@ function createStaticHandler({
   accountStore = new AccountStore(accountFile),
   trustProxy = trustedProxy(),
   limiter = new SlidingWindowLimiter(),
+  mutationLimiter = new SlidingWindowLimiter({ limit: 180, windowMs: 60000 }),
 } = {}) {
   const limited = (req) => limiter.take(clientIp(req, trustProxy) || "unknown");
   return async (req, res) => {
@@ -3530,6 +3532,15 @@ function createStaticHandler({
           });
           return jsonResponse(res, 200, result);
         }
+        if (
+          ((req.method === "PUT" && pathname === "/api/account/progress") ||
+            (req.method === "POST" && pathname === "/api/account/progression")) &&
+          mutationLimiter.take(auth.user.id)
+        )
+          return jsonResponse(res, 429, {
+            code: "RATE_LIMITED",
+            error: "Zbyt wiele zapisów postępu. Spróbuj ponownie za chwilę.",
+          });
         if (req.method === "PUT" && pathname === "/api/account/progress") {
           const body = await requestBody(req);
           if (

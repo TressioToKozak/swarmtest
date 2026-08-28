@@ -8,8 +8,8 @@
     "test": "node --test test/*.test.js",
     "syntax:check": "node --check account-store.js && node --check server.js && node --check account-client.js && node --check game.js && node --check progress-outbox.js",
     "lint": "eslint account-store.js server.js account-client.js progress-outbox.js",
-    "format": "prettier --write account-store.js server.js progress-outbox.js test/progression-hardening.test.js test/progress-outbox.test.js README.md",
-    "format:check": "prettier --check account-store.js server.js progress-outbox.js test/progression-hardening.test.js test/progress-outbox.test.js README.md"
+    "format": "prettier --write .prettierrc.json package.json account-store.js progress-outbox.js test/progression-hardening.test.js test/progress-outbox.test.js test/singleplayer-progress-stability.test.js",
+    "format:check": "prettier --check .prettierrc.json package.json account-store.js progress-outbox.js test/progression-hardening.test.js test/progress-outbox.test.js test/singleplayer-progress-stability.test.js"
   },
   "dependencies": {
     "ws": "^8.18.3"
