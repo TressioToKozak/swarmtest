@@ -6,6 +6,13 @@
   const DEFAULT_KEY = "swarmfall-progress-outbox-v1";
   const MAX_OPERATIONS = 100;
   const MAX_PAYLOAD_BYTES = 16 * 1024;
+  const OPERATION_TYPES = new Set([
+    "awardCurrency",
+    "awardSingleplayerResult",
+    "unlockAchievement",
+    "purchaseCharacter",
+    "completeMap",
+  ]);
   const TERMINAL_CODES = new Set(["INVALID_PROGRESSION", "INSUFFICIENT_COINS"]);
   const AUTH_CODES = new Set(["SESSION_EXPIRED", "NOT_AUTHENTICATED"]);
 
@@ -18,14 +25,17 @@
     if (
       !item ||
       typeof item.id !== "string" ||
-      typeof item.type !== "string" ||
+      !OPERATION_TYPES.has(item.type) ||
       !item.payload ||
       typeof item.payload !== "object" ||
       Array.isArray(item.payload)
     )
       return false;
     try {
-      return JSON.stringify(item.payload).length <= MAX_PAYLOAD_BYTES;
+      return (
+        new TextEncoder().encode(JSON.stringify(item.payload)).byteLength <=
+        MAX_PAYLOAD_BYTES
+      );
     } catch {
       return false;
     }
@@ -45,6 +55,8 @@
   function errorPolicy(error) {
     if (error?.code === "REVISION_CONFLICT") return "conflict";
     if (AUTH_CODES.has(error?.code)) return "auth";
+    if ([408, 425, 429].includes(error?.status) || error?.status >= 500)
+      return "retry";
     if (
       TERMINAL_CODES.has(error?.code) ||
       (Number.isInteger(error?.status) &&
@@ -62,6 +74,7 @@
     if (!key) throw new TypeError("A stable account id is required");
     const queue = readQueue(storage, key);
     let running = null;
+    let active = true;
     let serialized = storage.getItem(key);
 
     const persist = () => {
@@ -89,7 +102,7 @@
       running = (async () => {
         let processed = 0;
         let conflictRetries = 0;
-        while (queue.length) {
+        while (active && queue.length) {
           const operation = queue[0];
           try {
             const result = await options.send(operation, options.getRevision());
@@ -97,6 +110,7 @@
             queue.shift();
             persist();
             conflictRetries = 0;
+            options.onSuccess?.();
           } catch (error) {
             const policy = errorPolicy(error);
             if (policy === "conflict" && error.progress) {
@@ -105,12 +119,17 @@
                 progress: error.progress,
               });
               if (++conflictRetries <= 1) continue;
+              options.onRetryable?.(error);
               break;
             }
             if (policy === "terminal") {
               queue.shift();
               persist();
               options.onTerminal?.(operation, error);
+            } else if (policy === "auth") {
+              active = false;
+              options.onAuth?.(error);
+              break;
             } else {
               if (policy === "retry") options.onRetryable?.(error);
               break;
@@ -127,7 +146,11 @@
       return running;
     };
 
-    return { key, enqueue, drain, pending: () => queue.slice() };
+    const cancel = () => {
+      active = false;
+    };
+
+    return { key, enqueue, drain, cancel, pending: () => queue.slice() };
   }
 
   function createAndDrain(options) {
@@ -144,5 +167,6 @@
     DEFAULT_KEY,
     MAX_OPERATIONS,
     MAX_PAYLOAD_BYTES,
+    OPERATION_TYPES,
   });
 });

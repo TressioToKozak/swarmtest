@@ -118,10 +118,14 @@ test("authenticated boot automatically drains a queue restored after reload", as
   assert.equal(store.getItem(keyForAccount("account-a")), null);
 });
 
-test("network and HTTP 5xx failures retain the same operation", async () => {
+test("network, timeout, rate limit and HTTP 5xx failures retain the same operation", async () => {
   for (const error of [
     { code: "NETWORK_OFFLINE" },
     { code: "SERVER_UNAVAILABLE" },
+    { code: "REQUEST_FAILED", status: 408 },
+    { code: "REQUEST_FAILED", status: 425 },
+    { code: "REQUEST_FAILED", status: 429, retryAfterMs: 30_000 },
+    { code: "REQUEST_FAILED", status: 500 },
     { code: "REQUEST_FAILED", status: 503 },
   ]) {
     const store = storage(),
@@ -163,19 +167,35 @@ test("revision conflict reconciles once and retries the same id", async () => {
   assert.equal(outbox.pending().length, 0);
 });
 
-test("repeated conflicts are bounded and do not spin forever", async () => {
-  const store = storage();
-  let calls = 0;
+test("repeated conflicts schedule a delayed retry with the same id", async () => {
+  const store = storage(),
+    ids = [];
+  let calls = 0,
+    retrySignals = 0,
+    conflicts = true;
   const outbox = create(
-    options(store, "account-a", async () => {
-      calls++;
-      throw { code: "REVISION_CONFLICT", revision: calls, progress: {} };
-    }),
+    options(
+      store,
+      "account-a",
+      async (operation) => {
+        calls++;
+        ids.push(operation.id);
+        if (conflicts)
+          throw { code: "REVISION_CONFLICT", revision: calls, progress: {} };
+        return { revision: calls, progress: {} };
+      },
+      { onRetryable: () => retrySignals++ },
+    ),
   );
-  outbox.enqueue("unlockAchievement", { id: "boss_1" });
+  const operation = outbox.enqueue("unlockAchievement", { id: "boss_1" });
   await outbox.drain();
   assert.equal(calls, 2);
+  assert.equal(retrySignals, 1);
   assert.equal(outbox.pending().length, 1);
+  conflicts = false;
+  await outbox.drain();
+  assert.equal(outbox.pending().length, 0);
+  assert.deepEqual(ids, [operation.id, operation.id, operation.id]);
 });
 
 test("terminal domain failures are dead-lettered and do not block order", async () => {
@@ -189,18 +209,18 @@ test("terminal domain failures are dead-lettered and do not block order", async 
         `account-${terminalCode}`,
         async (operation) => {
           sent.push(operation.type);
-          if (operation.type === "bad")
+          if (operation.type === "unlockAchievement")
             throw { code: terminalCode, status: 400 };
           return { revision: sent.length, progress: {} };
         },
         { onTerminal: (operation) => rejected.push(operation.type) },
       ),
     );
-    outbox.enqueue("bad", {});
-    outbox.enqueue("good", {});
+    outbox.enqueue("unlockAchievement", { id: "unknown" });
+    outbox.enqueue("purchaseCharacter", { character: "warrior" });
     await outbox.drain();
-    assert.deepEqual(sent, ["bad", "good"]);
-    assert.deepEqual(rejected, ["bad"]);
+    assert.deepEqual(sent, ["unlockAchievement", "purchaseCharacter"]);
+    assert.deepEqual(rejected, ["unlockAchievement"]);
     assert.equal(outbox.pending().length, 0);
   }
 });
@@ -224,6 +244,8 @@ test("session expiry preserves only the same account queue", async () => {
   await b.drain();
   assert.equal(a.pending().length, 1);
   assert.deepEqual(sentByB, []);
+  await a.drain();
+  assert.equal(a.pending().length, 1);
 });
 
 test("successful operations preserve FIFO order and avoid redundant empty writes", async () => {
@@ -235,9 +257,10 @@ test("successful operations preserve FIFO order and avoid redundant empty writes
         return { revision: sent.length, progress: {} };
       }),
     );
-  for (const type of ["A", "B", "C"]) outbox.enqueue(type, {});
+  for (const type of ["awardCurrency", "unlockAchievement", "completeMap"])
+    outbox.enqueue(type, {});
   await outbox.drain();
-  assert.deepEqual(sent, ["A", "B", "C"]);
+  assert.deepEqual(sent, ["awardCurrency", "unlockAchievement", "completeMap"]);
   assert.equal(store.writes.filter(([kind]) => kind === "remove").length, 1);
 });
 
@@ -247,14 +270,18 @@ test("queue and payload limits are bounded", async () => {
       options(store, "account-a", async () => new Promise(() => {})),
     );
   for (let index = 0; index < MAX_OPERATIONS; index++)
-    outbox.enqueue(`operation-${index}`, {});
+    outbox.enqueue("awardCurrency", { amount: index });
   assert.throws(
-    () => outbox.enqueue("overflow", {}),
+    () => outbox.enqueue("awardCurrency", { amount: 1 }),
     (error) => error.code === "OUTBOX_FULL",
   );
   const other = create(options(storage(), "account-b", async () => ({})));
   assert.throws(
-    () => other.enqueue("huge", { value: "x".repeat(20_000) }),
+    () => other.enqueue("awardCurrency", { value: "x".repeat(20_000) }),
+    /Invalid operation/,
+  );
+  assert.throws(
+    () => other.enqueue("not-a-real-operation", {}),
     /Invalid operation/,
   );
 });
@@ -304,4 +331,125 @@ test("one failed drain emits one retry signal without internal polling", async (
   await outbox.drain();
   assert.equal(retrySignals, 1);
   assert.equal(outbox.pending().length, 1);
+});
+
+test("payload limit measures UTF-8 bytes", () => {
+  const outbox = create(options(storage(), "account-a", async () => ({})));
+  assert.doesNotThrow(() =>
+    outbox.enqueue("awardCurrency", { note: "😀".repeat(4_000) }),
+  );
+  assert.throws(
+    () => outbox.enqueue("awardCurrency", { note: "😀".repeat(4_100) }),
+    /Invalid operation/,
+  );
+});
+
+test("cancel prevents a previous account drain from starting another request", async () => {
+  const store = storage(),
+    sentA = [],
+    sentB = [];
+  let releaseFirst;
+  const firstRequest = new Promise((resolve) => (releaseFirst = resolve));
+  const a = create(
+    options(store, "account-a", async (operation) => {
+      sentA.push(operation.type);
+      if (sentA.length === 1) await firstRequest;
+      return { revision: sentA.length, progress: {} };
+    }),
+  );
+  a.enqueue("awardCurrency", { amount: 1 });
+  a.enqueue("unlockAchievement", { id: "boss_1" });
+  await settle();
+  a.cancel();
+  releaseFirst();
+  await a.drain();
+  assert.deepEqual(sentA, ["awardCurrency"]);
+  assert.equal(a.pending().length, 1);
+  const b = create(
+    options(store, "account-b", async (operation) => {
+      sentB.push(operation.type);
+      return { revision: 1, progress: {} };
+    }),
+  );
+  await b.drain();
+  assert.deepEqual(sentB, []);
+  const restoredA = create(
+    options(store, "account-a", async (operation) => {
+      sentA.push(operation.type);
+      return { revision: 2, progress: {} };
+    }),
+  );
+  await restoredA.drain();
+  assert.deepEqual(sentA, ["awardCurrency", "unlockAchievement"]);
+});
+
+test("account progress facade converts synchronous OUTBOX_FULL into rejection", async () => {
+  const account = require("../account-client"),
+    error = Object.assign(new Error("full"), { code: "OUTBOX_FULL" }),
+    outbox = {
+      enqueue() {
+        throw error;
+      },
+    };
+  let promise;
+  assert.doesNotThrow(() => {
+    promise = account.enqueueProgress(outbox, "awardCurrency", { amount: 1 });
+  });
+  await assert.rejects(promise, (candidate) => candidate === error);
+});
+
+test("retry controller has one bounded backoff timer and honors Retry-After", () => {
+  const { createRetryController } = require("../account-client"),
+    scheduled = [],
+    cleared = [],
+    runs = [],
+    controller = createRetryController({
+      run: () => runs.push("run"),
+      setTimer(callback, delay) {
+        scheduled.push({ callback, delay });
+        return scheduled.length;
+      },
+      clearTimer: (id) => cleared.push(id),
+    });
+  assert.equal(controller.schedule({}), true);
+  assert.equal(controller.schedule({}), false);
+  assert.equal(scheduled[0].delay, 5_000);
+  scheduled[0].callback();
+  assert.equal(controller.schedule({}), true);
+  assert.equal(scheduled[1].delay, 10_000);
+  scheduled[1].callback();
+  assert.equal(controller.schedule({ retryAfterMs: 30_000 }), true);
+  assert.equal(scheduled[2].delay, 30_000);
+  controller.reset();
+  scheduled[2].callback();
+  assert.equal(controller.schedule({}), true);
+  assert.equal(scheduled[3].delay, 5_000);
+  controller.cancel();
+  assert.deepEqual(runs, ["run", "run", "run"]);
+  assert.ok(cleared.length > 0);
+});
+
+test("autosave failure does not deadlock progression sequencing", async () => {
+  const { SyncController } = require("../account-client");
+  let retryCallback,
+    autosaveCalls = 0;
+  const controller = new SyncController({
+    getSnapshot: () => ({}),
+    send: async () => {
+      autosaveCalls++;
+      throw new Error("offline");
+    },
+    setTimer(callback) {
+      retryCallback = callback;
+      return 1;
+    },
+    clearTimer() {},
+  });
+  controller.initialize(0);
+  controller.markDirty();
+  await controller.settlePending();
+  assert.equal(controller.inFlight, false);
+  assert.equal(controller.dirty, true);
+  assert.equal(typeof retryCallback, "function");
+  assert.equal(autosaveCalls, 1);
 });
