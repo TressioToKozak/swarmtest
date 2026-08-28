@@ -32,10 +32,7 @@
     )
       return false;
     try {
-      return (
-        new TextEncoder().encode(JSON.stringify(item.payload)).byteLength <=
-        MAX_PAYLOAD_BYTES
-      );
+      return new TextEncoder().encode(JSON.stringify(item.payload)).byteLength <= MAX_PAYLOAD_BYTES;
     } catch {
       return false;
     }
@@ -44,9 +41,7 @@
   function readQueue(storage, key) {
     try {
       const value = JSON.parse(storage.getItem(key) || "[]");
-      return Array.isArray(value)
-        ? value.filter(validOperation).slice(-MAX_OPERATIONS)
-        : [];
+      return Array.isArray(value) ? value.filter(validOperation).slice(0, MAX_OPERATIONS) : [];
     } catch {
       return [];
     }
@@ -55,13 +50,10 @@
   function errorPolicy(error) {
     if (error?.code === "REVISION_CONFLICT") return "conflict";
     if (AUTH_CODES.has(error?.code)) return "auth";
-    if ([408, 425, 429].includes(error?.status) || error?.status >= 500)
-      return "retry";
+    if ([408, 425, 429].includes(error?.status) || error?.status >= 500) return "retry";
     if (
       TERMINAL_CODES.has(error?.code) ||
-      (Number.isInteger(error?.status) &&
-        error.status >= 400 &&
-        error.status < 500)
+      (Number.isInteger(error?.status) && error.status >= 400 && error.status < 500)
     )
       return "terminal";
     return "retry";
@@ -69,8 +61,7 @@
 
   function create(options) {
     const storage = options.storage;
-    const key =
-      options.key || keyForAccount(options.accountId, options.keyPrefix);
+    const key = options.key || keyForAccount(options.accountId, options.keyPrefix);
     if (!key) throw new TypeError("A stable account id is required");
     const queue = readQueue(storage, key);
     let running = null;

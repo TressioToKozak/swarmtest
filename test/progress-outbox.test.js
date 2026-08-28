@@ -70,10 +70,7 @@ test("account-scoped keys isolate A, B and reject a missing id", async () => {
   assert.equal(a.pending().length, 1);
   assert.deepEqual(sentByB, []);
   assert.equal(keyForAccount(undefined), null);
-  assert.throws(
-    () => create({ storage: store }),
-    /stable account id is required/,
-  );
+  assert.throws(() => create({ storage: store }), /stable account id is required/);
 });
 
 test("legacy undefined queue is never adopted by a real account", async () => {
@@ -131,14 +128,10 @@ test("network, timeout, rate limit and HTTP 5xx failures retain the same operati
     const store = storage(),
       ids = [],
       outbox = create(
-        options(
-          store,
-          `account-${error.status || error.code}`,
-          async (operation) => {
-            ids.push(operation.id);
-            throw error;
-          },
-        ),
+        options(store, `account-${error.status || error.code}`, async (operation) => {
+          ids.push(operation.id);
+          throw error;
+        }),
       );
     const queued = outbox.enqueue("unlockAchievement", { id: "boss_1" });
     await outbox.drain();
@@ -154,8 +147,7 @@ test("revision conflict reconciles once and retries the same id", async () => {
   const outbox = create(
     options(store, "account-a", async (operation) => {
       ids.push(operation.id);
-      if (++calls === 1)
-        throw { code: "REVISION_CONFLICT", revision: 4, progress: {} };
+      if (++calls === 1) throw { code: "REVISION_CONFLICT", revision: 4, progress: {} };
       return { revision: 5, progress: {} };
     }),
   );
@@ -180,8 +172,7 @@ test("repeated conflicts schedule a delayed retry with the same id", async () =>
       async (operation) => {
         calls++;
         ids.push(operation.id);
-        if (conflicts)
-          throw { code: "REVISION_CONFLICT", revision: calls, progress: {} };
+        if (conflicts) throw { code: "REVISION_CONFLICT", revision: calls, progress: {} };
         return { revision: calls, progress: {} };
       },
       { onRetryable: () => retrySignals++ },
@@ -209,8 +200,7 @@ test("terminal domain failures are dead-lettered and do not block order", async 
         `account-${terminalCode}`,
         async (operation) => {
           sent.push(operation.type);
-          if (operation.type === "unlockAchievement")
-            throw { code: terminalCode, status: 400 };
+          if (operation.type === "unlockAchievement") throw { code: terminalCode, status: 400 };
           return { revision: sent.length, progress: {} };
         },
         { onTerminal: (operation) => rejected.push(operation.type) },
@@ -264,11 +254,35 @@ test("successful operations preserve FIFO order and avoid redundant empty writes
   assert.equal(store.writes.filter(([kind]) => kind === "remove").length, 1);
 });
 
+test("oversized legacy queues preserve the oldest operations in FIFO order", async () => {
+  const accountId = "account-a";
+  const legacy = Array.from({ length: 105 }, (_, index) => ({
+    id: `legacy-${index + 1}`,
+    type: "awardCurrency",
+    payload: { amount: index + 1 },
+  }));
+  const store = storage([[keyForAccount(accountId), JSON.stringify(legacy)]]);
+  const sent = [];
+  const outbox = create(
+    options(store, accountId, async (operation) => {
+      sent.push(operation.id);
+      return { revision: sent.length, progress: {} };
+    }),
+  );
+
+  assert.equal(outbox.pending().length, MAX_OPERATIONS);
+  assert.equal(outbox.pending()[0].id, "legacy-1");
+  assert.equal(outbox.pending().at(-1).id, "legacy-100");
+  await outbox.drain();
+  assert.deepEqual(
+    sent,
+    legacy.slice(0, MAX_OPERATIONS).map(({ id }) => id),
+  );
+});
+
 test("queue and payload limits are bounded", async () => {
   const store = storage(),
-    outbox = create(
-      options(store, "account-a", async () => new Promise(() => {})),
-    );
+    outbox = create(options(store, "account-a", async () => new Promise(() => {})));
   for (let index = 0; index < MAX_OPERATIONS; index++)
     outbox.enqueue("awardCurrency", { amount: index });
   assert.throws(
@@ -280,10 +294,7 @@ test("queue and payload limits are bounded", async () => {
     () => other.enqueue("awardCurrency", { value: "x".repeat(20_000) }),
     /Invalid operation/,
   );
-  assert.throws(
-    () => other.enqueue("not-a-real-operation", {}),
-    /Invalid operation/,
-  );
+  assert.throws(() => other.enqueue("not-a-real-operation", {}), /Invalid operation/);
 });
 
 test("lost response retries the same id and applies the reward once", async () => {
@@ -335,9 +346,7 @@ test("one failed drain emits one retry signal without internal polling", async (
 
 test("payload limit measures UTF-8 bytes", () => {
   const outbox = create(options(storage(), "account-a", async () => ({})));
-  assert.doesNotThrow(() =>
-    outbox.enqueue("awardCurrency", { note: "😀".repeat(4_000) }),
-  );
+  assert.doesNotThrow(() => outbox.enqueue("awardCurrency", { note: "😀".repeat(4_000) }));
   assert.throws(
     () => outbox.enqueue("awardCurrency", { note: "😀".repeat(4_100) }),
     /Invalid operation/,
