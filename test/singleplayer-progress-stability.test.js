@@ -43,8 +43,11 @@ test("win, death and quit share one guarded single-player result finalizer", () 
     operations = [],
     harness = Function(
       "accountProgress",
-      `let singleplayerResultQueued=false,elapsed=125,player={kills:42},chosenCharacter='warrior';${helper};return{queueSingleplayerResultOnce,reset:()=>singleplayerResultQueued=false}`,
-    )((type, payload) => operations.push({ type, payload }));
+      `let singleplayerResultState='idle',elapsed=125,player={kills:42},chosenCharacter='warrior';${helper};return{queueSingleplayerResultOnce,reset:()=>singleplayerResultState='idle',state:()=>singleplayerResultState}`,
+    )((type, payload, onEnqueued) => {
+      operations.push({ type, payload });
+      onEnqueued();
+    });
   assert.equal(harness.queueSingleplayerResultOnce(), true);
   assert.equal(harness.queueSingleplayerResultOnce(), false);
   assert.deepEqual(operations, [
@@ -57,11 +60,60 @@ test("win, death and quit share one guarded single-player result finalizer", () 
   ]) {
     const flow = section(name, next);
     assert.match(flow, /queueSingleplayerResultOnce\(\)/);
+    assert.match(flow, /if\(!running\|\|!queueSingleplayerResultOnce\(\)\)return/);
     assert.doesNotMatch(flow, /accountProgress\('awardSingleplayerResult'/);
   }
   harness.reset();
   assert.equal(harness.queueSingleplayerResultOnce(), true);
   assert.equal(operations.length, 2);
+});
+
+test("a full outbox leaves result finalization retryable without duplicate successful IDs", async () => {
+  const helper = section("queueSingleplayerResultOnce", "renderDifficulty"),
+    storage = memoryStorage(),
+    sendState = { offline: true },
+    pending = outbox.create({
+      storage,
+      accountId: "full-account",
+      createId: (() => {
+        let id = 0;
+        return () => `operation-${++id}`;
+      })(),
+      getRevision: () => 0,
+      reconcile: () => {},
+      send: async () => {
+        if (sendState.offline) throw { code: "NETWORK_OFFLINE" };
+        return { revision: 1, progress: {} };
+      },
+      yieldTask: async () => {},
+    });
+  for (let index = 0; index < outbox.MAX_OPERATIONS; index++)
+    pending.enqueue("awardCurrency", { amount: 1 });
+  const harness = Function(
+    "accountProgress",
+    `let singleplayerResultState='idle',elapsed=125,player={kills:42},chosenCharacter='warrior';${helper};return{queueSingleplayerResultOnce,state:()=>singleplayerResultState}`,
+  )((type, payload, onEnqueued, onRejected) => {
+    try {
+      pending.enqueue(type, payload);
+      onEnqueued();
+    } catch (error) {
+      onRejected(error);
+    }
+  });
+  assert.doesNotThrow(() => assert.equal(harness.queueSingleplayerResultOnce(), false));
+  assert.equal(harness.state(), "idle");
+  await pending.drain();
+  sendState.offline = false;
+  await pending.drain();
+  assert.equal(harness.queueSingleplayerResultOnce(), true);
+  assert.equal(harness.queueSingleplayerResultOnce(), false);
+  assert.equal(harness.state(), "queued");
+  assert.equal(
+    pending.pending().filter((operation) => operation.type === "awardSingleplayerResult").length,
+    1,
+  );
+  pending.cancel();
+  await pending.drain();
 });
 
 test("account progress failures stay contained outside gameplay", async () => {
