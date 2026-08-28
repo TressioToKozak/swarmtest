@@ -1,9 +1,18 @@
 'use strict';
-const fs=require('node:fs/promises'),path=require('node:path'),crypto=require('node:crypto');
+const fs = require('node:fs/promises'),
+  path = require('node:path'),
+  crypto = require('node:crypto');
 
-const ACCOUNT_PROGRESS_KEYS=Object.freeze([
-  'swarmfall-stats','swarmfall-achievements-v1','swarmfall-unlocked','swarmfall-modes',
-  'swarmfall-nightmare-cosmetic','swarmfall-save-v1','swarmfall-character','swarmfall-map','swarmfall-mode'
+const ACCOUNT_PROGRESS_KEYS = Object.freeze([
+  'swarmfall-stats',
+  'swarmfall-achievements-v1',
+  'swarmfall-unlocked',
+  'swarmfall-modes',
+  'swarmfall-nightmare-cosmetic',
+  'swarmfall-save-v1',
+  'swarmfall-character',
+  'swarmfall-map',
+  'swarmfall-mode',
 ]);
 const ACCOUNT_PROGRESS_KEY_SET=new Set(ACCOUNT_PROGRESS_KEYS);
 const SERVER_PROGRESS_KEYS=new Set(['swarmfall-stats','swarmfall-achievements-v1','swarmfall-unlocked','swarmfall-modes','swarmfall-nightmare-cosmetic']);
