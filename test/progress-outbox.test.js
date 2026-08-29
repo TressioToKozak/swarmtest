@@ -394,6 +394,37 @@ test("maintenance persistence failure retains the same sent operation for idempo
   assert.deepEqual(outbox.pending(), []);
 });
 
+test("terminal maintenance failure is contained and retains FIFO for deterministic retry", async () => {
+  const store = storage();
+  let failRemove = true,
+    retryable = 0;
+  const nativeRemove = store.removeItem;
+  store.removeItem = (key) => {
+    if (failRemove) throw new Error("remove failed");
+    nativeRemove(key);
+  };
+  const box = create(
+    options(
+      store,
+      "terminal-maintenance",
+      async () => {
+        throw { code: "INVALID_PROGRESSION", status: 400 };
+      },
+      { onRetryable: () => retryable++ },
+    ),
+  );
+  box.enqueue("unlockAchievement", { id: "unknown" }, "terminal-operation");
+  await box.drain();
+  assert.equal(retryable, 1);
+  assert.deepEqual(
+    box.pending().map(({ id }) => id),
+    ["terminal-operation"],
+  );
+  failRemove = false;
+  await box.drain();
+  assert.deepEqual(box.pending(), []);
+});
+
 test("failed backlog promotion leaves active and backlog FIFO unchanged", async () => {
   const store = storage(),
     sent = [];
@@ -595,4 +626,78 @@ test("autosave failure does not deadlock progression sequencing", async () => {
   assert.equal(controller.dirty, true);
   assert.equal(typeof retryCallback, "function");
   assert.equal(autosaveCalls, 1);
+});
+
+test("client-owned generations protect pending and in-flight writes from stale reconciles", async () => {
+  const {
+    ClientWriteTracker,
+    SyncController,
+    applyProgress,
+    snapshot,
+  } = require("../account-client");
+  const store = storage(),
+    tracker = new ClientWriteTracker(),
+    sent = [];
+  let release;
+  const firstResponse = new Promise((resolve) => (release = resolve));
+  store.setItem("swarmfall-save-v1", "A");
+  tracker.mark("swarmfall-save-v1");
+  const controller = new SyncController({
+    getSnapshot: () => snapshot(store, tracker.keys),
+    onSnapshot: () => tracker.begin(),
+    onSnapshotSettled: (token, success) => tracker.settle(token, success),
+    send: async (progress) => {
+      sent.push(progress);
+      if (sent.length === 1) return firstResponse;
+      return { revision: 3, progress };
+    },
+    onReconcile: ({ progress }) => applyProgress(store, progress, tracker.protectedKeys()),
+  });
+  controller.initialize(0);
+  controller.markDirty();
+  await settle();
+  store.setItem("swarmfall-save-v1", "B");
+  tracker.mark("swarmfall-save-v1");
+  controller.markPending();
+  controller.reconcile({
+    revision: 1,
+    progress: { "swarmfall-save-v1": "OLD", "swarmfall-stats": "server-stats" },
+  });
+  assert.equal(store.getItem("swarmfall-save-v1"), "B");
+  assert.equal(store.getItem("swarmfall-stats"), "server-stats");
+  release({ revision: 2, progress: { "swarmfall-save-v1": "A" } });
+  await controller.settlePending();
+  assert.deepEqual(
+    sent.map((value) => value["swarmfall-save-v1"]),
+    ["A", "B"],
+  );
+  assert.equal(store.getItem("swarmfall-save-v1"), "B");
+  assert.equal(controller.revision, 3);
+  controller.reconcile({ revision: 4, progress: { "swarmfall-save-v1": "SERVER" } });
+  assert.equal(store.getItem("swarmfall-save-v1"), "SERVER");
+});
+
+test("PUT snapshots and dirty tracking remain restricted to client-owned keys", () => {
+  const accountSource = require("node:fs").readFileSync(
+    require.resolve("../account-client"),
+    "utf8",
+  );
+  const account = require("../account-client"),
+    store = storage([
+      ["swarmfall-stats", "stats"],
+      ["swarmfall-save-v1", "save"],
+      ["swarmfall-character", "druid"],
+    ]);
+  assert.deepEqual(account.snapshot(store, account.CLIENT_PROGRESS_KEY_SET), {
+    "swarmfall-save-v1": "save",
+    "swarmfall-character": "druid",
+  });
+  assert.match(
+    accountSource,
+    /CLIENT_PROGRESS_KEY_SET\.has\(key\).*clientWrites\.mark\(key\);sync\.markPending\(\)/,
+  );
+  assert.doesNotMatch(
+    accountSource,
+    /ACCOUNT_PROGRESS_KEY_SET\.has\(String\(key\)\).*sync\.markPending/,
+  );
 });

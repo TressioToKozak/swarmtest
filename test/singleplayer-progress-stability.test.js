@@ -108,6 +108,119 @@ test("win, death and quit share one guarded single-player result finalizer", () 
   assert.equal(operations.length, 2);
 });
 
+test("a pending terminal descriptor blocks only a fresh singleplayer start", () => {
+  const startFlow = section("start", "resetSingleplayerRunState");
+  assert.match(startFlow, /intent==='singleplayer'&&singleplayerTerminalDescriptor/);
+  assert.match(startFlow, /retrySingleplayerResultAndReload\(\)/);
+  assert.match(startFlow, /window\.SwarmAccount\?\.dialog\(t\('account\.saving'\)\)/);
+  assert.doesNotMatch(startFlow, /intent==='multiplayer'&&singleplayerTerminalDescriptor/);
+});
+
+async function realBoundaryScenario(initialSize) {
+  const storage = memoryStorage();
+  let sequence = 0;
+  const offlineOptions = {
+    storage,
+    accountId: "account-id",
+    createId: () => `seed-${++sequence}`,
+    getRevision: () => 0,
+    send: async () => {
+      throw { code: "NETWORK_OFFLINE" };
+    },
+    reconcile() {},
+    yieldTask: async () => {},
+  };
+  const initialBox = outbox.create(offlineOptions);
+  for (let index = 0; index < initialSize; index++)
+    initialBox.enqueue("awardCurrency", { amount: 1 }, `seed-${index}`);
+  await initialBox.drain();
+  const progressFor = (box) => (type, payload, onEnqueued, onRejected, operationId) => {
+    try {
+      const operation = box.enqueue(type, payload, operationId);
+      onEnqueued?.(operation);
+      return true;
+    } catch (error) {
+      onRejected?.(error);
+      return false;
+    }
+  };
+  const first = terminalHarness(progressFor(initialBox), { storage });
+  first.api.victory();
+  initialBox.cancel();
+  return {
+    storage,
+    first,
+    pending: () => outbox.create({ ...offlineOptions, send: offlineOptions.send }).pending(),
+    async reloadAndRelease(slots) {
+      let available = slots;
+      const box = outbox.create({
+        ...offlineOptions,
+        send: async () => {
+          if (available-- > 0) return { revision: slots - available, progress: {} };
+          throw { code: "NETWORK_OFFLINE" };
+        },
+      });
+      await box.drain();
+      const terminal = terminalHarness(progressFor(box), { storage, restore: true });
+      terminal.api.retrySingleplayerResultAndReload();
+      box.cancel();
+      return terminal;
+    },
+  };
+}
+
+test("real outbox boundary 298/300 durably accepts both victory operations", async () => {
+  const scenario = await realBoundaryScenario(298),
+    terminal = scenario.pending().filter(({ type }) => type !== "awardCurrency");
+  assert.deepEqual(
+    terminal.map(({ type }) => type),
+    ["awardSingleplayerResult", "completeMap"],
+  );
+  assert.deepEqual(
+    terminal.map(({ id }) => id),
+    ["terminal-run-id-result", "terminal-run-id-map"],
+  );
+  assert.equal(scenario.first.cleanup.clears, 1);
+  const state = outbox
+    .create({
+      storage: scenario.storage,
+      accountId: "account-id",
+      createId: () => "unused",
+      getRevision: () => 0,
+      send: async () => ({}),
+      reconcile() {},
+    })
+    .state();
+  assert.equal(state.active.length, 100);
+  assert.equal(state.backlog.length, 200);
+});
+
+test("real outbox boundaries 299/300 and 300/300 recover stable victory IDs after reload", async () => {
+  for (const initialSize of [299, 300]) {
+    const scenario = await realBoundaryScenario(initialSize);
+    assert.equal(scenario.first.cleanup.clears, 0);
+    const descriptor = JSON.parse(scenario.storage.getItem("terminal-key:account-id"));
+    assert.equal(descriptor.result.id, "terminal-run-id-result");
+    assert.equal(descriptor.completeMap.id, "terminal-run-id-map");
+    if (initialSize === 299) {
+      assert.equal(descriptor.result.queued, true);
+      assert.equal(descriptor.completeMap.queued, false);
+      await scenario.reloadAndRelease(1);
+    } else {
+      assert.equal(descriptor.result.queued, false);
+      assert.equal(descriptor.completeMap.queued, false);
+      await scenario.reloadAndRelease(1);
+      await scenario.reloadAndRelease(1);
+    }
+    const terminal = scenario.pending().filter(({ type }) => type !== "awardCurrency");
+    assert.deepEqual(
+      terminal.map(({ type }) => type),
+      ["awardSingleplayerResult", "completeMap"],
+    );
+    assert.equal(new Set(terminal.map(({ id }) => id)).size, 2);
+  }
+});
+
 test("a full outbox leaves result finalization retryable without duplicate successful IDs", async () => {
   const helper = finalizerSection(),
     storage = memoryStorage(),

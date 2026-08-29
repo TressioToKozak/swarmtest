@@ -115,7 +115,7 @@
         candidate.backlog.push(operation);
       else candidate.active.push(operation);
       commit(candidate);
-      void drain();
+      void drain().catch(() => {});
       return operation;
     };
     const drain = () => {
@@ -149,8 +149,13 @@
               const candidate = { active: state.active.slice(1), backlog: state.backlog.slice() };
               if (candidate.backlog.length && candidate.active.length < MAX_OPERATIONS)
                 candidate.active.push(candidate.backlog.shift());
-              commit(candidate);
-              options.onTerminal?.(operation, error);
+              try {
+                commit(candidate);
+                options.onTerminal?.(operation, error);
+              } catch (storageError) {
+                options.onRetryable?.(storageError);
+                break;
+              }
             } else if (policy === "auth") {
               active = false;
               options.onAuth?.(error);
@@ -187,7 +192,7 @@
 
   function createAndDrain(options) {
     const outbox = create(options);
-    void outbox.drain();
+    void outbox.drain().catch(() => {});
     return outbox;
   }
 
