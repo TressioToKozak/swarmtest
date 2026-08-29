@@ -7,6 +7,7 @@ const {
   keyForAccount,
   DEFAULT_KEY,
   MAX_OPERATIONS,
+  MAX_TOTAL_OPERATIONS,
 } = require("../progress-outbox");
 
 function storage(entries = []) {
@@ -283,7 +284,7 @@ test("oversized legacy queues preserve the oldest operations in FIFO order", asy
 test("queue and payload limits are bounded", async () => {
   const store = storage(),
     outbox = create(options(store, "account-a", async () => new Promise(() => {})));
-  for (let index = 0; index < MAX_OPERATIONS; index++)
+  for (let index = 0; index < MAX_TOTAL_OPERATIONS; index++)
     outbox.enqueue("awardCurrency", { amount: index });
   assert.throws(
     () => outbox.enqueue("awardCurrency", { amount: 1 }),
@@ -295,6 +296,139 @@ test("queue and payload limits are bounded", async () => {
     /Invalid operation/,
   );
   assert.throws(() => other.enqueue("not-a-real-operation", {}), /Invalid operation/);
+});
+
+test("more than one hundred offline semantic events remain durable in FIFO active and backlog windows", async () => {
+  const store = storage(),
+    outbox = create(
+      options(store, "long-offline", async () => {
+        throw { code: "NETWORK_OFFLINE" };
+      }),
+    ),
+    types = [
+      ["awardCurrency", { amount: 1 }],
+      ["unlockAchievement", { id: "boss_1" }],
+      ["purchaseCharacter", { character: "warrior" }],
+      ["awardSingleplayerResult", { time: 10, kills: 2, character: "scout" }],
+      ["completeMap", { map: "ruins", mode: "normal" }],
+    ];
+  const accepted = Array.from({ length: 175 }, (_, index) => {
+    const [type, payload] = types[index % types.length];
+    return outbox.enqueue(type, payload);
+  });
+  await outbox.drain();
+  const state = outbox.state(),
+    reloaded = create(options(store, "long-offline", async () => ({ revision: 1, progress: {} })));
+  assert.equal(state.active.length, MAX_OPERATIONS);
+  assert.equal(state.backlog.length, 75);
+  assert.deepEqual(
+    reloaded.pending().map(({ id }) => id),
+    accepted.map(({ id }) => id),
+  );
+});
+
+test("failed enqueue persistence rolls RAM back and retry creates only one durable operation", () => {
+  const store = storage();
+  let fail = true;
+  const nativeSet = store.setItem;
+  store.setItem = (key, value) => {
+    if (fail) throw new Error("quota");
+    nativeSet(key, value);
+  };
+  const outbox = create(options(store, "transactional-enqueue", async () => ({})));
+  assert.throws(() => outbox.enqueue("awardCurrency", { amount: 1 }, "stable-operation"), /quota/);
+  assert.deepEqual(outbox.pending(), []);
+  fail = false;
+  outbox.enqueue("awardCurrency", { amount: 1 }, "stable-operation");
+  assert.deepEqual(
+    outbox.pending().map(({ id }) => id),
+    ["stable-operation"],
+  );
+});
+
+test("hard-cap rejection is controlled for every semantic operation type", () => {
+  const payloads = {
+    awardCurrency: { amount: 1 },
+    unlockAchievement: { id: "boss_1" },
+    purchaseCharacter: { character: "warrior" },
+    awardSingleplayerResult: { time: 1, kills: 1, character: "scout" },
+    completeMap: { map: "ruins", mode: "normal" },
+  };
+  for (const [type, payload] of Object.entries(payloads)) {
+    const outbox = create(options(storage(), `full-${type}`, async () => new Promise(() => {})));
+    for (let index = 0; index < MAX_TOTAL_OPERATIONS; index++)
+      outbox.enqueue("awardCurrency", { amount: 1 });
+    assert.throws(
+      () => outbox.enqueue(type, payload),
+      (error) => error.code === "OUTBOX_FULL",
+    );
+    assert.equal(outbox.pending().length, MAX_TOTAL_OPERATIONS);
+    outbox.cancel();
+  }
+});
+
+test("maintenance persistence failure retains the same sent operation for idempotent retry", async () => {
+  const store = storage(),
+    sent = [];
+  let failRemove = true;
+  const nativeRemove = store.removeItem;
+  store.removeItem = (key) => {
+    if (failRemove) throw new Error("remove failed");
+    nativeRemove(key);
+  };
+  const outbox = create(
+    options(store, "transactional-shift", async (operation) => {
+      sent.push(operation.id);
+      return { revision: sent.length, progress: {} };
+    }),
+  );
+  outbox.enqueue("awardCurrency", { amount: 1 }, "maintenance-operation");
+  await outbox.drain();
+  assert.deepEqual(
+    outbox.pending().map(({ id }) => id),
+    ["maintenance-operation"],
+  );
+  failRemove = false;
+  await outbox.drain();
+  assert.deepEqual(sent, ["maintenance-operation", "maintenance-operation"]);
+  assert.deepEqual(outbox.pending(), []);
+});
+
+test("failed backlog promotion leaves active and backlog FIFO unchanged", async () => {
+  const store = storage(),
+    sent = [];
+  let failPromotion = false;
+  const nativeSet = store.setItem;
+  store.setItem = (key, value) => {
+    if (failPromotion) throw new Error("promotion failed");
+    nativeSet(key, value);
+  };
+  const outbox = create(
+    options(store, "transactional-promotion", async (operation) => {
+      sent.push(operation.id);
+      return { revision: sent.length, progress: {} };
+    }),
+  );
+  outbox.cancel();
+  for (let index = 0; index <= MAX_OPERATIONS; index++)
+    outbox.enqueue("awardCurrency", { amount: 1 }, `promotion-${index}`);
+  const reloaded = create(
+    options(store, "transactional-promotion", async (operation) => {
+      sent.push(operation.id);
+      return { revision: sent.length, progress: {} };
+    }),
+  );
+  failPromotion = true;
+  await reloaded.drain();
+  assert.deepEqual(
+    reloaded.pending().map(({ id }) => id),
+    outbox.pending().map(({ id }) => id),
+  );
+  failPromotion = false;
+  await reloaded.drain();
+  assert.equal(sent[0], "promotion-0");
+  assert.equal(sent[1], "promotion-0");
+  assert.deepEqual(reloaded.pending(), []);
 });
 
 test("lost response retries the same id and applies the reward once", async () => {

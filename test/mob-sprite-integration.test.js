@@ -34,7 +34,7 @@ test('sprite integration preserves direction and timing without legacy model fal
   assert.match(game,/Math\.atan2\(e\.chargeY,e\.chargeX\)/);
   assert.match(game,/Math\.atan2\(b\.vy,b\.vx\)/);
   assert.match(game,/kind:'shooterBullet'/);
-  assert.match(server,/kind:'shooterBullet'/);
+  assert.match(server,/kind:\s*["']shooterBullet["']/);
   assert.match(visuals,/window\.drawEnemyModel=.*=>drawMobSprite/);
   assert.doesNotMatch(visuals,/else if\(e\.type==='swarm'\)swarm|toxicBoss\(ctx/);
   for(const type of ['melee','toxic','trapper','boss_titan','boss_warden','boss_void','toxic_boss_spore','toxic_boss_fog','toxic_boss_core'])assert.match(visuals,new RegExp(`${type}:\\{size:`));
