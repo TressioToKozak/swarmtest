@@ -3626,11 +3626,14 @@ function createStaticHandler({
             code: error.code,
             error: "Nieprawidłowa operacja progresji.",
           });
-        if (error.code === "ACCOUNT_STORE_CORRUPTED")
+        if (
+          error.code === "ACCOUNT_STORE_CORRUPTED" ||
+          error.code === "ACCOUNT_STORE_WRITE_FAILED"
+        )
           return jsonResponse(res, 503, {
             code: error.code,
             error: "Baza kont jest chwilowo niedostępna.",
-          });
+          }, { "retry-after": "1" });
         return jsonResponse(res, error.message === "too-large" ? 413 : 400, {
           code: "INVALID_REQUEST",
           error:
