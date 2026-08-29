@@ -677,6 +677,57 @@ test("client-owned generations protect pending and in-flight writes from stale r
   assert.equal(store.getItem("swarmfall-save-v1"), "SERVER");
 });
 
+test("boot writes and account switches establish a clean client-write baseline", async () => {
+  const {
+    ClientWriteTracker,
+    SyncController,
+    applyProgress,
+    snapshot,
+  } = require("../account-client");
+  const store = storage(),
+    tracker = new ClientWriteTracker();
+  let release;
+  const response = new Promise((resolve) => (release = resolve));
+  const controller = new SyncController({
+    getSnapshot: () => snapshot(store, tracker.keys),
+    onInitialize: () => tracker.reset(),
+    onSnapshot: () => tracker.begin(),
+    onSnapshotSettled: (token, success) => tracker.settle(token, success),
+    send: () => response,
+    onReconcile: ({ progress }) => applyProgress(store, progress, tracker.protectedKeys()),
+  });
+  const localWrite = (key, value) => {
+    store.setItem(key, value);
+    if (controller.enabled) {
+      tracker.mark(key);
+      controller.markPending();
+    }
+  };
+
+  localWrite("swarmfall-character", "scout");
+  assert.deepEqual([...tracker.protectedKeys()], []);
+  controller.initialize(1);
+  controller.reconcile({ revision: 2, progress: { "swarmfall-character": "druid" } });
+  assert.equal(store.getItem("swarmfall-character"), "druid");
+
+  localWrite("swarmfall-character", "warrior");
+  controller.retryNow();
+  await settle();
+  controller.reconcile({ revision: 3, progress: { "swarmfall-character": "scout" } });
+  assert.equal(store.getItem("swarmfall-character"), "warrior");
+  release({ revision: 4, progress: { "swarmfall-character": "warrior" } });
+  await controller.settlePending();
+  controller.reconcile({ revision: 5, progress: { "swarmfall-character": "druid" } });
+  assert.equal(store.getItem("swarmfall-character"), "druid");
+
+  tracker.mark("swarmfall-character");
+  assert.deepEqual([...tracker.protectedKeys()], ["swarmfall-character"]);
+  controller.initialize(10);
+  assert.deepEqual([...tracker.protectedKeys()], []);
+  controller.reconcile({ revision: 11, progress: { "swarmfall-character": "scout" } });
+  assert.equal(store.getItem("swarmfall-character"), "scout");
+});
+
 test("PUT snapshots and dirty tracking remain restricted to client-owned keys", () => {
   const accountSource = require("node:fs").readFileSync(
     require.resolve("../account-client"),
