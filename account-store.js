@@ -305,10 +305,17 @@ class AccountStore {
     return task;
   }
   async persist(data) {
-    await fs.mkdir(path.dirname(this.file), { recursive: true });
     const temporary = `${this.file}.${process.pid}.${crypto.randomBytes(5).toString("hex")}.tmp`;
-    await fs.writeFile(temporary, JSON.stringify(data));
-    await fs.rename(temporary, this.file);
+    try {
+      await fs.mkdir(path.dirname(this.file), { recursive: true });
+      await fs.writeFile(temporary, JSON.stringify(data));
+      await fs.rename(temporary, this.file);
+    } catch (cause) {
+      await fs.rm(temporary, { force: true }).catch(() => {});
+      const error = new Error("Account store persistence failed", { cause });
+      error.code = "ACCOUNT_STORE_WRITE_FAILED";
+      throw error;
+    }
   }
   read(operation) {
     return this.run((data) => operation(data));

@@ -168,13 +168,19 @@ test("sliding limiter keeps a spammed bucket bounded and recovers after its wind
   assert.equal(limiter.buckets.get("attacker").length, 1);
 });
 
-test("origin allowlist is strict in production and local-only by default", () => {
+test("origin policy defaults to exact request host and explicit allowlist stays strict", () => {
   assert.equal(originAllowed(undefined, "https://game.example"), true);
   assert.equal(originAllowed("https://game.example", "https://game.example"), true);
   assert.equal(originAllowed("http://localhost:8080", "https://game.example"), false);
   assert.equal(originAllowed("https://evil.example", "https://game.example"), false);
-  assert.equal(originAllowed("http://localhost:8080", ""), true);
-  assert.equal(originAllowed("https://evil.example", ""), false);
+  assert.equal(originAllowed("https://tressenberg.pl", "", "tressenberg.pl"), true);
+  assert.equal(originAllowed("http://localhost:8080", "", "localhost:8080"), true);
+  assert.equal(originAllowed("https://evil.com", "", "tressenberg.pl"), false);
+  assert.equal(originAllowed("https://evil-tressenberg.pl", "", "tressenberg.pl"), false);
+  assert.equal(originAllowed("https://tressenberg.pl.evil.com", "", "tressenberg.pl"), false);
+  assert.equal(originAllowed("https://tressenberg.pl:444", "", "tressenberg.pl"), false);
+  assert.equal(originAllowed("not an origin", "", "tressenberg.pl"), false);
+  assert.equal(originAllowed("wss://tressenberg.pl", "", "tressenberg.pl"), false);
 });
 
 test("forwarded address and protocol require trusted proxy mode", () => {

@@ -3293,7 +3293,7 @@ function requestIsHttps(req, trust = trustedProxy()) {
         .trim() === "https"),
   );
 }
-function originAllowed(origin, configured = process.env.WS_ALLOWED_ORIGINS) {
+function originAllowed(origin, configured = process.env.WS_ALLOWED_ORIGINS, requestHost = "") {
   if (!origin) return true;
   if (configured)
     return configured
@@ -3302,7 +3302,8 @@ function originAllowed(origin, configured = process.env.WS_ALLOWED_ORIGINS) {
       .filter(Boolean)
       .includes(origin);
   try {
-    return ["localhost", "127.0.0.1", "::1"].includes(new URL(origin).hostname);
+    const parsed = new URL(origin);
+    return ["http:", "https:"].includes(parsed.protocol) && parsed.host === requestHost;
   } catch {
     return false;
   }
@@ -3626,11 +3627,14 @@ function createStaticHandler({
             code: error.code,
             error: "Nieprawidłowa operacja progresji.",
           });
-        if (error.code === "ACCOUNT_STORE_CORRUPTED")
+        if (
+          error.code === "ACCOUNT_STORE_CORRUPTED" ||
+          error.code === "ACCOUNT_STORE_WRITE_FAILED"
+        )
           return jsonResponse(res, 503, {
             code: error.code,
             error: "Baza kont jest chwilowo niedostępna.",
-          });
+          }, { "retry-after": "1" });
         return jsonResponse(res, error.message === "too-large" ? 413 : 400, {
           code: "INVALID_REQUEST",
           error:
@@ -3704,7 +3708,7 @@ function createHttpServer(core = new GameServer(), options = {}) {
     server,
     maxPayload: 4096,
     verifyClient: (info, done) => {
-      if (!originAllowed(info.origin, allowedOrigins))
+      if (!originAllowed(info.origin, allowedOrigins, info.req.headers.host))
         return done(false, 403, "Forbidden");
       const ip = clientIp(info.req, trustProxy);
       info.req.swarmClientIp = ip;

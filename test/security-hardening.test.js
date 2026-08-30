@@ -22,7 +22,10 @@ function open(url, options) {
 function rejected(url, options) {
   return new Promise((resolve) => {
     const socket = new WebSocket(url, options);
-    socket.once('unexpected-response', (_request, response) => resolve(response.statusCode));
+    socket.once('unexpected-response', (_request, response) => {
+      response.resume();
+      resolve(response.statusCode);
+    });
     socket.once('error', () => resolve(0));
   });
 }
@@ -68,7 +71,7 @@ test('client IP ignores forwarded headers unless trusted proxy mode is explicit'
 
 test('WebSocket rejects disallowed origins and excess active connections predictably', async (t) => {
   const runtime = runtimeFixture(t, {
-    maxConnectionsPerIp: 1,
+    wsLimits: { maxConnectionsPerIp: 1 },
     allowedOrigins: 'https://game.example',
   });
   await listen(runtime);
@@ -76,11 +79,27 @@ test('WebSocket rejects disallowed origins and excess active connections predict
   assert.equal(await rejected(url, { origin: 'https://evil.example' }), 403);
   const first = await open(url, { origin: 'https://game.example' });
   assert.equal(await rejected(url, { origin: 'https://game.example' }), 429);
-  first.close();
+  const closed = new Promise((resolve) => first.once('close', resolve));
+  first.terminate();
+  await closed;
+});
+
+test('WebSocket default policy accepts proxy same-origin and rejects a foreign Origin', async (t) => {
+  const runtime = runtimeFixture(t);
+  await listen(runtime);
+  const url = `ws://127.0.0.1:${runtime.server.address().port}`,
+    headers = { host: 'tressenberg.pl' };
+  const socket = await open(url, { origin: 'https://tressenberg.pl', headers });
+  assert.equal(await rejected(url, { origin: 'https://evil.com', headers }), 403);
+  const closed = new Promise((resolve) => socket.once('close', resolve));
+  socket.terminate();
+  await closed;
 });
 
 test('create-lobby limiter survives reconnects from the same IP', async (t) => {
-  const runtime = runtimeFixture(t, { createLobbyLimit: 1, createLobbyWindowMs: 60_000 });
+  const runtime = runtimeFixture(t, {
+    wsLimits: { createLobbyLimit: 1, createLobbyWindowMs: 60_000 },
+  });
   await listen(runtime);
   const socket = await open(`ws://127.0.0.1:${runtime.server.address().port}`);
   socket.send(
@@ -89,12 +108,10 @@ test('create-lobby limiter survives reconnects from the same IP', async (t) => {
   await message(socket, 'helloAck');
   socket.send(JSON.stringify({ type: 'createLobby' }));
   await message(socket, 'lobbyState');
-  await new Promise((resolve) => setTimeout(resolve, 1550));
+  const closed = new Promise((resolve) => socket.once('close', resolve));
   socket.send(JSON.stringify({ type: 'createLobby' }));
-  const error = await message(socket, 'error');
-  assert.match(error.message, /Zbyt wiele/);
+  assert.equal(await closed, 1013);
   assert.equal(runtime.core.lobbies.size, 1);
-  socket.close();
 });
 
 test('upgrade offers and lobby codes are deterministic with injected randomness', () => {
