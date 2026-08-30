@@ -84,6 +84,18 @@ test('WebSocket rejects disallowed origins and excess active connections predict
   await closed;
 });
 
+test('WebSocket default policy accepts proxy same-origin and rejects a foreign Origin', async (t) => {
+  const runtime = runtimeFixture(t);
+  await listen(runtime);
+  const url = `ws://127.0.0.1:${runtime.server.address().port}`,
+    headers = { host: 'tressenberg.pl' };
+  const socket = await open(url, { origin: 'https://tressenberg.pl', headers });
+  assert.equal(await rejected(url, { origin: 'https://evil.com', headers }), 403);
+  const closed = new Promise((resolve) => socket.once('close', resolve));
+  socket.terminate();
+  await closed;
+});
+
 test('create-lobby limiter survives reconnects from the same IP', async (t) => {
   const runtime = runtimeFixture(t, {
     wsLimits: { createLobbyLimit: 1, createLobbyWindowMs: 60_000 },
