@@ -249,6 +249,44 @@ test("legacy untrusted reward is removed once and does not block a saved purchas
   assert.equal(store.getItem(key), null);
 });
 
+test("operation success is reported only after server resolution while terminal failure is final", async () => {
+  const store = storage(),
+    events = [];
+  let release;
+  const first = create(
+    options(
+      store,
+      "confirmed-purchase",
+      (operation) =>
+        new Promise((resolve) => {
+          release = () => resolve({ revision: 1, progress: {}, operation });
+        }),
+      { onSuccess: (operation) => events.push(["success", operation.type]) },
+    ),
+  );
+  first.enqueue("purchaseCharacter", { character: "warrior" });
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(events, []);
+  release();
+  await first.drain();
+  assert.deepEqual(events, [["success", "purchaseCharacter"]]);
+
+  const terminal = create(
+    options(
+      store,
+      "failed-purchase",
+      async () => {
+        throw { code: "INSUFFICIENT_COINS", status: 400 };
+      },
+      { onTerminal: (operation) => events.push(["terminal", operation.type]) },
+    ),
+  );
+  terminal.enqueue("purchaseCharacter", { character: "druid" });
+  await terminal.drain();
+  assert.deepEqual(events.at(-1), ["terminal", "purchaseCharacter"]);
+  assert.equal(terminal.pending().length, 0);
+});
+
 test("session expiry preserves only the same account queue", async () => {
   const store = storage(),
     a = create(

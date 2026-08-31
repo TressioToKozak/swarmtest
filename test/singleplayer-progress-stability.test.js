@@ -61,7 +61,78 @@ test("normal single-player flow never queues server-rejected progression operati
     "completeMap",
   ])
     assert.doesNotMatch(game, new RegExp(`accountProgress\\('${type}'`));
-  assert.match(game, /accountProgress\('purchaseCharacter'/);
+  assert.match(game, /SwarmAccount\?\.purchaseCharacter/);
+  assert.match(
+    fs.readFileSync(require.resolve("../account-client.js"), "utf8"),
+    /enqueue\(['"]purchaseCharacter['"]/,
+  );
+});
+
+test("single-player reward and upgrade flows contain no dead account-gold rewards", () => {
+  const candidates = section("upgradeCandidates", "upgradeCardFromKey"),
+    cards = section("upgradeCardFromKey", "renderUpgradeOffer"),
+    choice = section("chooseUpgrade", "renderBuildSlots"),
+    boss = section("rewardBoss", "gainXp"),
+    update = section("updateCore", "updateMapHazards"),
+    crate = section("openCrate", "collectLoot"),
+    translations = fs.readFileSync(require.resolve("../i18n.js"), "utf8"),
+    instructions = fs.readFileSync(require.resolve("../index.html"), "utf8");
+  for (const source of [candidates, choice, boss, update, crate])
+    assert.doesNotMatch(source, /awardCurrency|gold-reward|type:'coin'/);
+  assert.match(update, /awardedMinutes=survivedMinutes;saveClock\+=dt/);
+  assert.match(cards, /if\(kind==='gold'\)return null/);
+  assert.doesNotMatch(candidates, /vault|greed_curse[^']*\?\{kind/);
+  assert.doesNotMatch(
+    translations,
+    /Gold Pouch|Sakiewka złota|Immediately gain 5 gold|Natychmiast otrzymujesz 5 złota/,
+  );
+  assert.doesNotMatch(instructions, /monetę za każdą minutę|coin for every minute/);
+});
+
+test("legacy difficulty modes migrate into the validated local-only set", () => {
+  const source = section("completedModes", "accountProgress"),
+    run = (entries) => {
+      const storage = memoryStorage(entries),
+        completed = Function(
+          "localStorage",
+          "SWARM_DIFFICULTIES",
+          `${source};return completedModes()`,
+        )(storage, { normal: {}, hard: {}, nightmare: {}, endless: {} });
+      return { completed, storage };
+    };
+  let result = run([
+    ["swarmfall-modes", '["normal","hard","invalid","hard"]'],
+    ["swarmfall-singleplayer-modes", '["normal"]'],
+  ]);
+  assert.deepEqual([...result.completed], ["normal", "hard"]);
+  assert.deepEqual(JSON.parse(result.storage.getItem("swarmfall-singleplayer-modes")), [
+    "normal",
+    "hard",
+  ]);
+  result = run([
+    ["swarmfall-modes", "malformed"],
+    ["swarmfall-singleplayer-modes", '["normal","hard"]'],
+  ]);
+  assert.deepEqual([...result.completed], ["normal", "hard"]);
+});
+
+test("character purchase waits for authoritative confirmation before unlock or success UI", () => {
+  const purchase = section("selectCharacter", "awardUnlock");
+  assert.doesNotMatch(
+    purchase.slice(0, purchase.indexOf("await purchase(id)")),
+    /unlockedCharacters\.add|awardUnlock/,
+  );
+  assert.ok(
+    purchase.indexOf("await purchase(id)") <
+      purchase.indexOf("confirmed=unlockedCharacters.has(id)"),
+  );
+  assert.ok(
+    purchase.indexOf("confirmed=unlockedCharacters.has(id)") < purchase.indexOf("awardUnlock(id)"),
+  );
+  assert.match(
+    purchase,
+    /catch\{accountStats=loadStats\(\);unlockedCharacters=loadUnlocked\(\);refreshSavedStats\(\)\}/,
+  );
 });
 
 test("death and victory finish locally without descriptors, retries, or forced reloads", () => {
@@ -91,14 +162,11 @@ test("death and victory finish locally without descriptors, retries, or forced r
 });
 
 test("single-player rewards cannot increase the server-owned account coin balance or UI", () => {
-  const currency = section("awardCurrency", "formatTime"),
-    achievement = section("achievementUnlock", "hasMultiplayerSession"),
+  const achievement = section("achievementUnlock", "hasMultiplayerSession"),
     render = section("renderAchievements", "achievementUnlock"),
-    award = Function(`${currency};return awardCurrency`)(),
     accountStats = { coins: 10 };
-  assert.equal(award(100, "forged local reward"), false);
   assert.equal(accountStats.coins, 10);
-  assert.doesNotMatch(currency, /savedStats\.coins|showCoinToast|accountProgress/);
+  assert.doesNotMatch(game, /function awardCurrency|awardCurrency\(/);
   assert.doesNotMatch(achievement, /savedStats\.coins|accountProgress|entry\.reward/);
   assert.doesNotMatch(render, /entry\.reward|rewards\.gold/);
   assert.match(game, /LOCAL_STATS_KEY='swarmfall-singleplayer-stats-v1'/);

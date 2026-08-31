@@ -137,7 +137,7 @@
               candidate.active.push(candidate.backlog.shift());
             commit(candidate);
             conflictRetries = 0;
-            options.onSuccess?.();
+            options.onSuccess?.(operation, result);
           } catch (error) {
             const policy = errorPolicy(error);
             if (policy === "conflict" && error.progress) {
