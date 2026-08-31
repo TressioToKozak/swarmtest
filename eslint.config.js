@@ -2,12 +2,8 @@
 
 module.exports = [
   {
-    files: [
-      "account-store.js",
-      "server.js",
-      "account-client.js",
-      "progress-outbox.js",
-    ],
+    files: ["**/*.js"],
+    ignores: ["node_modules/**", "assets/**"],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "commonjs",
@@ -18,6 +14,7 @@ module.exports = [
         clearInterval: "readonly",
         setTimeout: "readonly",
         clearTimeout: "readonly",
+        setImmediate: "readonly",
         structuredClone: "readonly",
         Buffer: "readonly",
         URL: "readonly",
@@ -30,11 +27,23 @@ module.exports = [
       },
     },
     rules: {
-      "no-undef": "error",
       "no-unreachable": "error",
       "no-dupe-keys": "error",
       "no-constant-condition": ["error", { checkLoops: false }],
       "no-unused-vars": "off",
     },
+  },
+  {
+    files: [
+      "account-store.js",
+      "server.js",
+      "account-client.js",
+      "progress-outbox.js",
+      "eslint.config.js",
+      "scripts/**/*.js",
+      "benchmark/**/*.js",
+      "test/**/*.js",
+    ],
+    rules: { "no-undef": "error" },
   },
 ];

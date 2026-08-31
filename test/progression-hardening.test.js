@@ -128,15 +128,23 @@ test("single-player operations are revision-safe and idempotent", async (t) => {
       0,
       operation("achievement-boss", "unlockAchievement", { id: "boss_1" }),
     ),
-    (error) => error.code === "REVISION_CONFLICT" && error.revision === 1,
+    (error) => error.code === "UNTRUSTED_PROGRESSION",
   );
-  const second = await store.applySingleplayerOperation(
-    "u",
-    1,
-    operation("achievement-boss", "unlockAchievement", { id: "boss_1" }),
+  await assert.rejects(
+    store.applySingleplayerOperation(
+      "u",
+      1,
+      operation("forged-result", "awardSingleplayerResult", {
+        time: 600,
+        kills: 500,
+        character: "warrior",
+      }),
+    ),
+    (error) => error.code === "UNTRUSTED_PROGRESSION",
   );
-  assert.equal(second.revision, 2);
-  assert.equal(stats(second.progress).coins, 5);
+  const current = await store.read((data) => data.users[0]);
+  assert.equal(current.revision, 1);
+  assert.equal(stats(current.progress).coins, 0);
 });
 
 test("sliding limiter prunes expired unique keys while retaining active limits", () => {
