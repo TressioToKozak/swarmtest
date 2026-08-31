@@ -191,7 +191,11 @@ test("repeated conflicts schedule a delayed retry with the same id", async () =>
 });
 
 test("terminal domain failures are dead-lettered and do not block order", async () => {
-  for (const terminalCode of ["INVALID_PROGRESSION", "INSUFFICIENT_COINS"]) {
+  for (const terminalCode of [
+    "INVALID_PROGRESSION",
+    "INSUFFICIENT_COINS",
+    "UNTRUSTED_PROGRESSION",
+  ]) {
     const store = storage(),
       sent = [],
       rejected = [];
@@ -214,6 +218,35 @@ test("terminal domain failures are dead-lettered and do not block order", async 
     assert.deepEqual(rejected, ["unlockAchievement"]);
     assert.equal(outbox.pending().length, 0);
   }
+});
+
+test("legacy untrusted reward is removed once and does not block a saved purchase", async () => {
+  const store = storage(),
+    accountId = "legacy-untrusted-account",
+    key = keyForAccount(accountId),
+    sent = [];
+  store.setItem(
+    key,
+    JSON.stringify({
+      active: [
+        { id: "legacy-reward", type: "awardCurrency", payload: { amount: 5 } },
+        { id: "saved-purchase", type: "purchaseCharacter", payload: { character: "warrior" } },
+      ],
+      backlog: [],
+    }),
+  );
+  const box = create(
+    options(store, accountId, async (operation) => {
+      sent.push(operation.type);
+      if (operation.type === "awardCurrency") throw { code: "UNTRUSTED_PROGRESSION", status: 403 };
+      return { revision: 1, progress: {} };
+    }),
+  );
+  await box.drain();
+  await box.drain();
+  assert.deepEqual(sent, ["awardCurrency", "purchaseCharacter"]);
+  assert.equal(box.pending().length, 0);
+  assert.equal(store.getItem(key), null);
 });
 
 test("session expiry preserves only the same account queue", async () => {

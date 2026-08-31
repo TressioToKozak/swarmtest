@@ -155,6 +155,7 @@ function progressionError(code) {
   error.code = code;
   return error;
 }
+const CLIENT_PROGRESS_OPERATION_TYPES = new Set(["purchaseCharacter"]);
 function applyProgressOperation(progress, operation) {
   progress = cleanProgress(progress);
   const type = operation?.type,
@@ -367,6 +368,8 @@ class AccountStore {
           revision,
           progress: cleanProgress(user.progress),
         };
+      if (!CLIENT_PROGRESS_OPERATION_TYPES.has(operation?.type))
+        throw progressionError("UNTRUSTED_PROGRESSION");
       if (expectedRevision !== revision) {
         const error = progressionError("REVISION_CONFLICT");
         error.revision = revision;
@@ -428,5 +431,6 @@ module.exports = {
   cleanProgress,
   mergeClientProgress,
   applyProgressOperation,
+  CLIENT_PROGRESS_OPERATION_TYPES,
   mergeMultiplayerStats,
 };

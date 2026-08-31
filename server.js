@@ -814,6 +814,7 @@ class GameServer {
       if (found.preparing) found.preparing.readyPlayerIds.delete(member.id);
       if (found.game?.players[member.id]) {
         found.game.players[member.id].input = {};
+        delete found.game.players[member.id].disconnectSettlementSnapshot;
         this.syncNetworkPause(found);
       }
       break;
@@ -1310,6 +1311,7 @@ class GameServer {
       snapshotClock: 0,
       explosionSeq: 0,
       explosions: [],
+      settlementArchive: {},
     };
   }
   syncNetworkPause(lobby) {
@@ -1421,7 +1423,16 @@ class GameServer {
       m.connected = false;
       m.disconnectAt = this.now();
       if (lobby.preparing) lobby.preparing.readyPlayerIds.delete(m.id);
-      if (lobby.game?.players[m.id]) lobby.game.players[m.id].input = {};
+      if (lobby.game?.players[m.id]) {
+        const player = lobby.game.players[m.id];
+        player.input = {};
+        player.disconnectSettlementSnapshot = {
+          coins: player.coins || 0,
+          kills: player.kills || 0,
+          time: lobby.game.time || 0,
+          character: player.character,
+        };
+      }
       this.resumeUpgradeIfReady(lobby);
       if (lobby.game) {
         this.updateManualPause(lobby);
@@ -1467,7 +1478,22 @@ class GameServer {
       for (const m of [...lobby.players])
         if (!m.connected && now - m.disconnectAt > GRACE_MS) {
           lobby.players = lobby.players.filter((p) => p !== m);
-          if (lobby.game) delete lobby.game.players[m.id];
+          if (lobby.game) {
+            const player = lobby.game.players[m.id];
+            if (player?.accountUserId) {
+              lobby.game.settlementArchive ||= {};
+              lobby.game.settlementArchive[m.id] = {
+                ...player,
+                settlementSnapshot: player.disconnectSettlementSnapshot || {
+                  coins: player.coins || 0,
+                  kills: player.kills || 0,
+                  time: lobby.game.time || 0,
+                  character: player.character,
+                },
+              };
+            }
+            delete lobby.game.players[m.id];
+          }
         }
       this.migrate(lobby);
       const active = lobby.players.some((p) => p.connected),
@@ -2429,7 +2455,7 @@ class GameServer {
     const g = lobby.game;
     if (!g || g.settlementPromise)
       return g?.settlementPromise || Promise.resolve([]);
-    let pending = Object.values(g.players).filter(
+    let pending = [...Object.values(g.players), ...Object.values(g.settlementArchive || {})].filter(
       (player) => player.accountUserId && this.accountStore,
     );
     const run = async () => {
@@ -2447,7 +2473,7 @@ class GameServer {
                 g.matchId,
                 {
                   playerId: player.id,
-                  ...(player.settlementSnapshot || {
+                  ...(player.settlementSnapshot || player.disconnectSettlementSnapshot || {
                     coins: player.coins || 0,
                     kills: player.kills || 0,
                     time: g.time || 0,
@@ -3621,9 +3647,10 @@ function createStaticHandler({
           });
         if (
           error.code === "INSUFFICIENT_COINS" ||
-          error.code === "INVALID_PROGRESSION"
+          error.code === "INVALID_PROGRESSION" ||
+          error.code === "UNTRUSTED_PROGRESSION"
         )
-          return jsonResponse(res, 400, {
+          return jsonResponse(res, error.code === "UNTRUSTED_PROGRESSION" ? 403 : 400, {
             code: error.code,
             error: "Nieprawidłowa operacja progresji.",
           });
