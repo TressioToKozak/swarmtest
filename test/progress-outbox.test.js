@@ -191,7 +191,11 @@ test("repeated conflicts schedule a delayed retry with the same id", async () =>
 });
 
 test("terminal domain failures are dead-lettered and do not block order", async () => {
-  for (const terminalCode of ["INVALID_PROGRESSION", "INSUFFICIENT_COINS"]) {
+  for (const terminalCode of [
+    "INVALID_PROGRESSION",
+    "INSUFFICIENT_COINS",
+    "UNTRUSTED_PROGRESSION",
+  ]) {
     const store = storage(),
       sent = [],
       rejected = [];
