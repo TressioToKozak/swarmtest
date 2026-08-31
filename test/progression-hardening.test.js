@@ -285,10 +285,12 @@ test("active WebSocket connection limiter releases slots and isolates proxy-deri
   assert.equal(limiter.counts.has("ip-a"), false);
 });
 
-test("map completion achievements are not posted as rejected standalone operations", () => {
-  const source = fs.readFileSync(path.join(__dirname, "..", "game.js"), "utf8");
-  assert.match(source, /\['map_1','hard_clear','nightmare_clear'\]\.includes\(id\)/);
-  assert.match(source, /accountProgress\('completeMap'/);
+test("map completion and achievements remain local-only and never enter account progression", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "game.js"), "utf8"),
+    achievements = fs.readFileSync(path.join(__dirname, "..", "achievements.js"), "utf8");
+  assert.doesNotMatch(source, /accountProgress\('(completeMap|unlockAchievement)'/);
+  assert.match(source, /swarmfall-singleplayer-modes/);
+  assert.match(achievements, /swarmfall-singleplayer-achievements-v1/);
 });
 
 test("WebSocket transport enforces per-IP capacity and releases a disconnected slot", async (t) => {

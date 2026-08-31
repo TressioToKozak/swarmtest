@@ -2473,7 +2473,7 @@ class GameServer {
                 g.matchId,
                 {
                   playerId: player.id,
-                  ...(player.settlementSnapshot || {
+                  ...(player.settlementSnapshot || player.disconnectSettlementSnapshot || {
                     coins: player.coins || 0,
                     kills: player.kills || 0,
                     time: g.time || 0,

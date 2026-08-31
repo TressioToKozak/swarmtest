@@ -2,19 +2,12 @@
 const test = require("node:test"),
   assert = require("node:assert/strict"),
   fs = require("node:fs");
-const outbox = require("../progress-outbox");
 const game = fs.readFileSync(require.resolve("../game.js"), "utf8");
 
 function section(name, next) {
   const start = game.indexOf(`function ${name}`),
     end = game.indexOf(`function ${next}`, start);
   return game.slice(start, end);
-}
-function finalizerSection() {
-  return section("singleplayerTerminalKey", "renderDifficulty").replace(
-    /addEventListener\(\'swarm-account-ready\'[^\n]+\n/,
-    "",
-  );
 }
 function memoryStorage(entries = []) {
   const values = new Map(entries);
@@ -25,36 +18,21 @@ function memoryStorage(entries = []) {
     values,
   };
 }
-function terminalHarness(
-  accountProgress,
-  { map = "ruins", mode = "normal", storage = memoryStorage(), restore = false } = {},
-) {
-  const helper = finalizerSection(),
-    cleanup = { clears: 0, reloads: 0 };
-  return {
-    cleanup,
-    storage,
-    api: Function(
-      "accountProgress",
-      "clearGameSave",
-      "location",
-      "chosenMap",
-      "chosenMode",
-      "localStorage",
-      "crypto",
-      "TERMINAL_KEY",
-      `let singleplayerResultState='idle',singleplayerResultPayload=null,singleplayerResultOperationId=null,singleplayerCompleteMapState='idle',singleplayerCompleteMapPayload=null,singleplayerCompleteMapOperationId=null,singleplayerTerminalVictory=false,singleplayerTerminalDescriptor=null,singleplayerAccountId='account-id',elapsed=125,player={kills:42},chosenCharacter='warrior',running=true,paused=false,transitions=0;${helper};${restore ? "restoreSingleplayerTerminal();" : ""}function victory(){if(!running)return;transitions++;if(beginSingleplayerTerminal(true))clearGameSave()}function death(){if(!running)return;transitions++;if(beginSingleplayerTerminal())clearGameSave()}function quit(){if(!running){if(singleplayerResultPayload)retrySingleplayerResultAndReload();return}transitions++;if(beginSingleplayerTerminal(false,'quit'))retrySingleplayerResultAndReload()}return{victory,death,quit,retrySingleplayerResultAndReload,state:()=>({running,paused,transitions,singleplayerResultState,singleplayerCompleteMapState})}`,
-    )(
-      accountProgress,
-      () => cleanup.clears++,
-      { reload: () => cleanup.reloads++ },
-      map,
-      mode,
-      storage,
-      { randomUUID: () => "terminal-run-id" },
-      "terminal-key",
+
+function terminalHarness(storage = memoryStorage()) {
+  const source = section("singleplayerTerminalKey", "renderDifficulty").replace(
+      /addEventListener\('swarm-account-ready'[^\n]+\n/,
+      "",
     ),
-  };
+    effects = { clears: 0, reloads: 0 };
+  const api = Function(
+    "localStorage",
+    "location",
+    "TERMINAL_KEY",
+    "clearGameSave",
+    `let singleplayerTerminalDescriptor=null,singleplayerAccountId='account-id',running=true,paused=false;${source};return{beginSingleplayerTerminal,retrySingleplayerResultAndReload,restoreSingleplayerTerminal,nextRun(){running=true;paused=false},state(){return{running,paused,singleplayerTerminalDescriptor}}}`,
+  )(storage, { reload: () => effects.reloads++ }, "terminal-key", () => effects.clears++);
+  return { api, effects, storage };
 }
 
 test("single-player multi-kill counts every death with one batch stats persistence", () => {
@@ -62,511 +40,70 @@ test("single-player multi-kill counts every death with one batch stats persisten
       game.indexOf("const enemyCountBeforeDeaths"),
       game.indexOf("let enemyWrite", game.indexOf("const enemyCountBeforeDeaths")),
     ),
-    updates = ["player.kills++;", "savedStats.totalKills++;", "deathStatsChanged=true;"];
+    updates = ["player.kills++;", "singleplayerStats.totalKills++;", "deathStatsChanged=true;"];
   for (const update of updates) assert.match(deaths, new RegExp(update.replace(/[.+]/g, "\\$&")));
   assert.equal((deaths.match(/saveStats\(\)/g) || []).length, 1);
   let writes = 0;
   const result = Function(
     "saveStats",
-    `const player={kills:0},savedStats={totalKills:0};let deathStatsChanged=false;for(let index=0;index<30;index++){${updates.join("")}}if(deathStatsChanged)saveStats();return{player,savedStats}`,
+    `const player={kills:0},singleplayerStats={totalKills:0};let deathStatsChanged=false;for(let index=0;index<30;index++){${updates.join("")}}if(deathStatsChanged)saveStats();return{player,singleplayerStats}`,
   )(() => writes++);
   assert.equal(result.player.kills, 30);
-  assert.equal(result.savedStats.totalKills, 30);
+  assert.equal(result.singleplayerStats.totalKills, 30);
   assert.equal(writes, 1);
 });
 
-test("win, death and quit share one guarded single-player result finalizer", () => {
-  const helper = finalizerSection(),
-    operations = [],
-    harness = Function(
-      "accountProgress",
-      `let singleplayerResultState='idle',singleplayerResultPayload=null,singleplayerResultOperationId=null,singleplayerCompleteMapState='idle',singleplayerCompleteMapPayload=null,singleplayerCompleteMapOperationId=null,singleplayerTerminalVictory=false,singleplayerTerminalDescriptor=null,singleplayerAccountId='account-id',elapsed=125,player={kills:42},chosenCharacter='warrior',chosenMap='ruins',chosenMode='normal';${helper};return{queueSingleplayerResultOnce,reset:()=>singleplayerResultState='idle',state:()=>singleplayerResultState}`,
-    )((type, payload, onEnqueued) => {
-      operations.push({ type, payload });
-      onEnqueued();
-    });
-  assert.equal(harness.queueSingleplayerResultOnce(), true);
-  assert.equal(harness.queueSingleplayerResultOnce(), true);
-  assert.deepEqual(operations, [
-    { type: "awardSingleplayerResult", payload: { time: 125, kills: 42, character: "warrior" } },
-  ]);
-  for (const [name, next] of [
-    ["winMap", "quitToMenu"],
-    ["quitToMenu", "gameOver"],
-    ["gameOver", "visibleTerrain"],
-  ]) {
-    const flow = section(name, next);
-    assert.match(
-      flow,
-      /beginSingleplayerTerminal\((?:true)?\)|retrySingleplayerResultAndReload\(\)/,
-    );
-    assert.doesNotMatch(flow, /if\(!running\|\|!queueSingleplayerResultOnce\(\)\)return/);
-    assert.doesNotMatch(flow, /accountProgress\('awardSingleplayerResult'/);
-  }
-  harness.reset();
-  assert.equal(harness.queueSingleplayerResultOnce(), true);
-  assert.equal(operations.length, 2);
-});
-
-test("a pending terminal descriptor blocks only a fresh singleplayer start", () => {
-  const startFlow = section("start", "resetSingleplayerRunState");
-  assert.match(startFlow, /intent==='singleplayer'&&singleplayerTerminalDescriptor/);
-  assert.match(startFlow, /retrySingleplayerResultAndReload\(\)/);
-  assert.match(startFlow, /window\.SwarmAccount\?\.dialog\(t\('account\.saving'\)\)/);
-  assert.doesNotMatch(startFlow, /intent==='multiplayer'&&singleplayerTerminalDescriptor/);
-});
-
-async function realBoundaryScenario(initialSize) {
-  const storage = memoryStorage();
-  let sequence = 0;
-  const offlineOptions = {
-    storage,
-    accountId: "account-id",
-    createId: () => `seed-${++sequence}`,
-    getRevision: () => 0,
-    send: async () => {
-      throw { code: "NETWORK_OFFLINE" };
-    },
-    reconcile() {},
-    yieldTask: async () => {},
-  };
-  const initialBox = outbox.create(offlineOptions);
-  for (let index = 0; index < initialSize; index++)
-    initialBox.enqueue("awardCurrency", { amount: 1 }, `seed-${index}`);
-  await initialBox.drain();
-  const progressFor = (box) => (type, payload, onEnqueued, onRejected, operationId) => {
-    try {
-      const operation = box.enqueue(type, payload, operationId);
-      onEnqueued?.(operation);
-      return true;
-    } catch (error) {
-      onRejected?.(error);
-      return false;
-    }
-  };
-  const first = terminalHarness(progressFor(initialBox), { storage });
-  first.api.victory();
-  initialBox.cancel();
-  return {
-    storage,
-    first,
-    pending: () => outbox.create({ ...offlineOptions, send: offlineOptions.send }).pending(),
-    async reloadAndRelease(slots) {
-      let available = slots;
-      const box = outbox.create({
-        ...offlineOptions,
-        send: async () => {
-          if (available-- > 0) return { revision: slots - available, progress: {} };
-          throw { code: "NETWORK_OFFLINE" };
-        },
-      });
-      await box.drain();
-      const terminal = terminalHarness(progressFor(box), { storage, restore: true });
-      terminal.api.retrySingleplayerResultAndReload();
-      box.cancel();
-      return terminal;
-    },
-  };
-}
-
-test("real outbox boundary 298/300 durably accepts both victory operations", async () => {
-  const scenario = await realBoundaryScenario(298),
-    terminal = scenario.pending().filter(({ type }) => type !== "awardCurrency");
-  assert.deepEqual(
-    terminal.map(({ type }) => type),
-    ["awardSingleplayerResult", "completeMap"],
-  );
-  assert.deepEqual(
-    terminal.map(({ id }) => id),
-    ["terminal-run-id-result", "terminal-run-id-map"],
-  );
-  assert.equal(scenario.first.cleanup.clears, 1);
-  const state = outbox
-    .create({
-      storage: scenario.storage,
-      accountId: "account-id",
-      createId: () => "unused",
-      getRevision: () => 0,
-      send: async () => ({}),
-      reconcile() {},
-    })
-    .state();
-  assert.equal(state.active.length, 100);
-  assert.equal(state.backlog.length, 200);
-});
-
-test("real outbox boundaries 299/300 and 300/300 recover stable victory IDs after reload", async () => {
-  for (const initialSize of [299, 300]) {
-    const scenario = await realBoundaryScenario(initialSize);
-    assert.equal(scenario.first.cleanup.clears, 0);
-    const descriptor = JSON.parse(scenario.storage.getItem("terminal-key:account-id"));
-    assert.equal(descriptor.result.id, "terminal-run-id-result");
-    assert.equal(descriptor.completeMap.id, "terminal-run-id-map");
-    if (initialSize === 299) {
-      assert.equal(descriptor.result.queued, true);
-      assert.equal(descriptor.completeMap.queued, false);
-      await scenario.reloadAndRelease(1);
-    } else {
-      assert.equal(descriptor.result.queued, false);
-      assert.equal(descriptor.completeMap.queued, false);
-      await scenario.reloadAndRelease(1);
-      await scenario.reloadAndRelease(1);
-    }
-    const terminal = scenario.pending().filter(({ type }) => type !== "awardCurrency");
-    assert.deepEqual(
-      terminal.map(({ type }) => type),
-      ["awardSingleplayerResult", "completeMap"],
-    );
-    assert.equal(new Set(terminal.map(({ id }) => id)).size, 2);
-  }
-});
-
-test("a full outbox leaves result finalization retryable without duplicate successful IDs", async () => {
-  const helper = finalizerSection(),
-    storage = memoryStorage(),
-    cleanup = { clears: 0, reloads: 0 },
-    sendState = { offline: true },
-    pending = outbox.create({
-      storage,
-      accountId: "full-account",
-      createId: (() => {
-        let id = 0;
-        return () => `operation-${++id}`;
-      })(),
-      getRevision: () => 0,
-      reconcile: () => {},
-      send: async () => {
-        if (sendState.offline) throw { code: "NETWORK_OFFLINE" };
-        return { revision: 1, progress: {} };
-      },
-      yieldTask: async () => {},
-    });
-  for (let index = 0; index < outbox.MAX_TOTAL_OPERATIONS; index++)
-    pending.enqueue("awardCurrency", { amount: 1 });
-  const harness = Function(
-    "accountProgress",
-    "clearGameSave",
-    "location",
-    `let singleplayerResultState='idle',singleplayerResultPayload=null,singleplayerResultOperationId=null,singleplayerCompleteMapState='idle',singleplayerCompleteMapPayload=null,singleplayerCompleteMapOperationId=null,singleplayerTerminalVictory=false,singleplayerTerminalDescriptor=null,singleplayerAccountId='account-id',elapsed=125,player={kills:42},chosenCharacter='warrior',chosenMap='ruins',chosenMode='normal';${helper};return{queueSingleplayerResultOnce,retrySingleplayerResultAndReload,state:()=>singleplayerResultState}`,
-  )(
-    (type, payload, onEnqueued, onRejected, operationId) => {
-      try {
-        pending.enqueue(type, payload, operationId);
-        onEnqueued();
-      } catch (error) {
-        onRejected(error);
-      }
-    },
-    () => cleanup.clears++,
-    { reload: () => cleanup.reloads++ },
-  );
-  assert.doesNotThrow(() => assert.equal(harness.queueSingleplayerResultOnce(), false));
-  assert.equal(harness.state(), "idle");
-  await pending.drain();
-  sendState.offline = false;
-  await pending.drain();
-  harness.retrySingleplayerResultAndReload();
-  assert.equal(harness.queueSingleplayerResultOnce(), true);
-  assert.equal(harness.state(), "queued");
-  assert.deepEqual(cleanup, { clears: 1, reloads: 1 });
-  assert.equal(
-    pending.pending().filter((operation) => operation.type === "awardSingleplayerResult").length,
-    1,
-  );
-  pending.cancel();
-  await pending.drain();
-});
-
-test("death with a full outbox stops once and does not retry from later frames", () => {
-  const helper = finalizerSection(),
-    attempts = [],
-    harness = Function(
-      "accountProgress",
-      "clearGameSave",
-      "location",
-      "localStorage",
-      "crypto",
-      "TERMINAL_KEY",
-      `let singleplayerResultState='idle',singleplayerResultPayload=null,singleplayerResultOperationId=null,singleplayerCompleteMapState='idle',singleplayerCompleteMapPayload=null,singleplayerCompleteMapOperationId=null,singleplayerTerminalVictory=false,singleplayerTerminalDescriptor=null,singleplayerAccountId='account-id',elapsed=125,player={kills:42},chosenCharacter='warrior',running=true,paused=false,transitions=0;${helper};function terminalFrame(){if(!running)return;transitions++;beginSingleplayerTerminal()}return{terminalFrame,state:()=>({running,paused,transitions,singleplayerResultState})}`,
-    )(
-      (type, payload, onEnqueued, onRejected) => {
-        attempts.push({ type, payload });
-        onRejected({ code: "OUTBOX_FULL" });
-      },
-      () => {},
-      { reload() {} },
-      memoryStorage(),
-      { randomUUID: () => "death-run-id" },
-      "terminal-key",
-    );
-  harness.terminalFrame();
-  for (let frame = 0; frame < 100; frame++) harness.terminalFrame();
-  assert.deepEqual(harness.state(), {
-    running: false,
-    paused: true,
-    transitions: 1,
-    singleplayerResultState: "idle",
-  });
-  assert.equal(attempts.length, 1);
-});
-
-test("final-boss victory enters a terminal retryable state even when enqueue is full", () => {
-  const win = section("winMap", "quitToMenu");
-  assert.match(win, /if\(!running\)return;const resultQueued=beginSingleplayerTerminal\(true\)/);
-  assert.match(win, /if\(resultQueued\)clearGameSave\(\)/);
-  assert.doesNotMatch(win, /if\(!resultQueued\)return/);
-});
-
-test("victory at 98/100 durably queues exactly one result and completeMap before cleanup", () => {
-  const accepted = [],
-    progress = (type, payload, onEnqueued, onRejected, operationId) => {
-      if (accepted.length >= 100) return onRejected({ code: "OUTBOX_FULL" });
-      const operation = { id: operationId || `operation-${accepted.length + 1}`, type, payload };
-      accepted.push(operation);
-      onEnqueued(operation);
-    };
-  for (let index = 0; index < 98; index++) accepted.push({ id: `existing-${index}` });
-  const { api, cleanup } = terminalHarness(progress);
-  api.victory();
-  assert.deepEqual(
-    accepted.slice(98).map(({ type }) => type),
-    ["awardSingleplayerResult", "completeMap"],
-  );
-  assert.equal(cleanup.clears, 1);
-});
-
-test("victory at 99/100 retries only missing completeMap and preserves its hard payload", () => {
-  const accepted = [];
-  for (let index = 0; index < 99; index++) accepted.push({ id: `existing-${index}` });
-  const progress = (type, payload, onEnqueued, onRejected, operationId) => {
-      if (accepted.length >= 100) return onRejected({ code: "OUTBOX_FULL" });
-      const operation = { id: operationId || `operation-${accepted.length + 1}`, type, payload };
-      accepted.push(operation);
-      onEnqueued(operation);
-    },
-    { api, cleanup } = terminalHarness(progress, { map: "toxic", mode: "hard" });
-  api.victory();
-  assert.equal(cleanup.clears, 0);
-  assert.equal(accepted.filter(({ type }) => type === "awardSingleplayerResult").length, 1);
-  accepted.shift();
-  api.retrySingleplayerResultAndReload();
-  assert.equal(accepted.filter(({ type }) => type === "awardSingleplayerResult").length, 1);
-  assert.deepEqual(accepted.find(({ type }) => type === "completeMap").payload, {
-    map: "toxic",
-    mode: "hard",
-  });
-  assert.deepEqual(cleanup, { clears: 1, reloads: 1 });
-});
-
-test("hard reload restores the terminal descriptor and retries only the missing stable operation id", () => {
-  const accepted = [];
-  for (let index = 0; index < 99; index++) accepted.push({ id: `existing-${index}` });
-  const descriptorStorage = memoryStorage(),
-    progress = (type, payload, onEnqueued, onRejected, operationId) => {
-      if (accepted.length >= 100) return onRejected({ code: "OUTBOX_FULL" });
-      const operation = { id: operationId, type, payload };
-      accepted.push(operation);
-      onEnqueued(operation);
-    },
-    first = terminalHarness(progress, {
-      map: "toxic",
-      mode: "nightmare",
-      storage: descriptorStorage,
-    });
-  first.api.victory();
-  const result = accepted.find(({ type }) => type === "awardSingleplayerResult"),
-    descriptor = JSON.parse(descriptorStorage.getItem("terminal-key:account-id"));
-  assert.equal(descriptor.kind, "victory");
-  assert.equal(descriptor.result.id, result.id);
-  assert.equal(descriptor.result.queued, true);
-  assert.equal(descriptor.completeMap.queued, false);
-  accepted.shift();
-  const reloaded = terminalHarness(progress, {
-    storage: descriptorStorage,
-    restore: true,
-  });
-  reloaded.api.retrySingleplayerResultAndReload();
-  assert.equal(accepted.filter(({ type }) => type === "awardSingleplayerResult").length, 1);
-  assert.equal(accepted.filter(({ type }) => type === "completeMap").length, 1);
-  assert.equal(new Set(accepted.filter(({ type }) => type).map(({ id }) => id)).size, 2);
-  assert.deepEqual(reloaded.cleanup, { clears: 1, reloads: 1 });
-});
-
-test("victory at 100/100 stays terminal across frames and user retry queues missing operations", () => {
-  const accepted = Array.from({ length: 100 }, (_, index) => ({ id: `existing-${index}` })),
-    attempts = [],
-    progress = (type, payload, onEnqueued, onRejected, operationId) => {
-      attempts.push(type);
-      if (accepted.length >= 100) return onRejected({ code: "OUTBOX_FULL" });
-      const operation = { id: operationId || `operation-${attempts.length}`, type, payload };
-      accepted.push(operation);
-      onEnqueued(operation);
-    },
-    { api, cleanup } = terminalHarness(progress, { map: "toxic", mode: "nightmare" });
-  api.victory();
-  for (let frame = 0; frame < 100; frame++) api.victory();
-  assert.equal(attempts.length, 1);
-  assert.equal(api.state().transitions, 1);
-  assert.equal(cleanup.clears, 0);
-  accepted.shift();
-  api.retrySingleplayerResultAndReload();
-  assert.deepEqual(attempts, ["awardSingleplayerResult", "awardSingleplayerResult", "completeMap"]);
-  accepted.shift();
-  api.retrySingleplayerResultAndReload();
-  assert.deepEqual(attempts, [
+test("normal single-player flow never queues server-rejected progression operations", () => {
+  for (const type of [
+    "awardCurrency",
     "awardSingleplayerResult",
-    "awardSingleplayerResult",
+    "unlockAchievement",
     "completeMap",
-    "completeMap",
-  ]);
-  assert.deepEqual(accepted.find(({ type }) => type === "completeMap").payload, {
-    map: "toxic",
-    mode: "nightmare",
-  });
-  assert.deepEqual(cleanup, { clears: 1, reloads: 1 });
+  ])
+    assert.doesNotMatch(game, new RegExp(`accountProgress\\('${type}'`));
+  assert.match(game, /accountProgress\('purchaseCharacter'/);
 });
 
-test("hard reload at a full window recovers result then completeMap in stable order", () => {
-  const accepted = Array.from({ length: 100 }, (_, index) => ({ id: `existing-${index}` })),
-    storage = memoryStorage(),
-    progress = (type, payload, onEnqueued, onRejected, operationId) => {
-      if (accepted.length >= 100) return onRejected({ code: "OUTBOX_FULL" });
-      const operation = { id: operationId, type, payload };
-      accepted.push(operation);
-      onEnqueued(operation);
-    };
-  terminalHarness(progress, { storage }).api.victory();
-  const descriptor = JSON.parse(storage.getItem("terminal-key:account-id"));
-  assert.equal(descriptor.result.queued, false);
-  assert.equal(descriptor.completeMap.queued, false);
-  const reloaded = terminalHarness(progress, { storage, restore: true });
-  accepted.shift();
-  reloaded.api.retrySingleplayerResultAndReload();
-  accepted.shift();
-  reloaded.api.retrySingleplayerResultAndReload();
-  const terminal = accepted.filter(({ type }) => type);
-  assert.deepEqual(
-    terminal.map(({ type }) => type),
-    ["awardSingleplayerResult", "completeMap"],
-  );
-  assert.deepEqual(
-    terminal.map(({ id }) => id),
-    [descriptor.result.id, descriptor.completeMap.id],
-  );
-});
-
-test("death and quit require only one single-player result operation", () => {
-  for (const terminal of ["death", "quit"]) {
-    const accepted = [],
-      progress = (type, payload, onEnqueued) => {
-        accepted.push({ id: `${terminal}-operation`, type, payload });
-        onEnqueued(accepted[0]);
-      },
-      { api } = terminalHarness(progress);
-    if (terminal === "death") api.death();
-    else api.quit();
-    assert.deepEqual(
-      accepted.map(({ type }) => type),
-      ["awardSingleplayerResult"],
-    );
+test("death and victory finish locally without descriptors, retries, or forced reloads", () => {
+  for (const kind of ["death", "victory"]) {
+    const legacy = { version: 1, kind, result: { id: "legacy-result" } },
+      harness = terminalHarness(
+        memoryStorage([["terminal-key:account-id", JSON.stringify(legacy)]]),
+      );
+    harness.api.restoreSingleplayerTerminal();
+    assert.equal(harness.storage.getItem("terminal-key:account-id"), null);
+    assert.equal(harness.api.beginSingleplayerTerminal(kind === "victory"), true);
+    assert.deepEqual(harness.api.state(), {
+      running: false,
+      paused: true,
+      singleplayerTerminalDescriptor: null,
+    });
+    assert.deepEqual(harness.effects, { clears: 1, reloads: 0 });
+    harness.api.nextRun();
+    assert.deepEqual(harness.api.state(), {
+      running: true,
+      paused: false,
+      singleplayerTerminalDescriptor: null,
+    });
   }
+  const start = section("start", "continueGame");
+  assert.doesNotMatch(start, /singleplayerTerminalDescriptor|account\.saving|retrySingleplayer/);
 });
 
-test("death and quit descriptors recover only their stable result after reload", () => {
-  for (const kind of ["death", "quit"]) {
-    const accepted = Array.from({ length: 100 }, (_, index) => ({ id: `existing-${index}` })),
-      storage = memoryStorage(),
-      progress = (type, payload, onEnqueued, onRejected, operationId) => {
-        if (accepted.length >= 100) return onRejected({ code: "OUTBOX_FULL" });
-        const operation = { id: operationId, type, payload };
-        accepted.push(operation);
-        onEnqueued(operation);
-      },
-      first = terminalHarness(progress, { storage });
-    first.api[kind]();
-    const descriptor = JSON.parse(storage.getItem("terminal-key:account-id"));
-    assert.equal(descriptor.kind, kind);
-    assert.equal(descriptor.completeMap, null);
-    accepted.shift();
-    terminalHarness(progress, { storage, restore: true }).api.retrySingleplayerResultAndReload();
-    const terminal = accepted.filter(({ type }) => type);
-    assert.deepEqual(
-      terminal.map(({ type }) => type),
-      ["awardSingleplayerResult"],
-    );
-    assert.equal(terminal[0].id, descriptor.result.id);
-  }
-});
-
-test("account progress failures stay contained outside gameplay", async () => {
-  const accountProgressSource = section("accountProgress", "queueSingleplayerResultOnce");
-  const run = (account) =>
-    Function(
-      "window",
-      `${accountProgressSource};return accountProgress`,
-    )({ SwarmAccount: account });
-  assert.doesNotThrow(() =>
-    run({
-      progress: () => {
-        throw new Error("full");
-      },
-    })("awardCurrency", {}),
-  );
-  run({
-    progress: () => Promise.reject(new Error("offline")),
-    sync: () => Promise.reject(new Error("still offline")),
-  })("awardCurrency", {});
-  await new Promise((resolve) => setImmediate(resolve));
-});
-
-test("ordinary semantic rewards fail closed when durable enqueue is rejected", () => {
-  const currency = section("awardCurrency", "rewardBoss"),
+test("single-player rewards cannot increase the server-owned account coin balance or UI", () => {
+  const currency = section("awardCurrency", "formatTime"),
     achievement = section("achievementUnlock", "hasMultiplayerSession"),
-    character = section("selectCharacter", "renderCharacterCards");
-  assert.match(currency, /if\(!accountProgress\('awardCurrency'/);
-  assert.match(currency, /savedStats\.coins-=amount;saveStats\(\);return false/);
-  assert.match(achievement, /Achievements\.completed\.delete\(id\)/);
-  assert.match(achievement, /savedStats\.coins-=entry\.reward/);
-  assert.match(character, /if\(!accountProgress\('purchaseCharacter'/);
-  assert.match(character, /unlockedCharacters\.delete\(id\)/);
-});
-
-test("offline quit result remains durable and drains after reload", async () => {
-  const storage = memoryStorage(),
-    accountId = "offline-account",
-    key = outbox.keyForAccount(accountId);
-  let ids = 0;
-  const options = (send) => ({
-      storage,
-      accountId,
-      createId: () => `result-${++ids}`,
-      getRevision: () => 0,
-      reconcile: () => {},
-      send,
-      yieldTask: async () => {},
-    }),
-    offline = outbox.create(
-      options(async () => {
-        throw { code: "NETWORK_OFFLINE" };
-      }),
-    );
-  const operation = offline.enqueue("awardSingleplayerResult", {
-    time: 125,
-    kills: 42,
-    character: "warrior",
-  });
-  await offline.drain();
-  assert.equal(JSON.parse(storage.getItem(key)).active[0].id, operation.id);
-  const sent = [],
-    reloaded = outbox.create(
-      options(async (pending) => {
-        sent.push(pending);
-        return { revision: 1, progress: {} };
-      }),
-    );
-  await reloaded.drain();
-  assert.deepEqual(sent, [operation]);
-  assert.equal(storage.getItem(key), null);
+    render = section("renderAchievements", "achievementUnlock"),
+    award = Function(`${currency};return awardCurrency`)(),
+    accountStats = { coins: 10 };
+  assert.equal(award(100, "forged local reward"), false);
+  assert.equal(accountStats.coins, 10);
+  assert.doesNotMatch(currency, /savedStats\.coins|showCoinToast|accountProgress/);
+  assert.doesNotMatch(achievement, /savedStats\.coins|accountProgress|entry\.reward/);
+  assert.doesNotMatch(render, /entry\.reward|rewards\.gold/);
+  assert.match(game, /LOCAL_STATS_KEY='swarmfall-singleplayer-stats-v1'/);
+  assert.match(game, /coins:accountStats\.coins/);
+  assert.doesNotMatch(section("saveStats", "updateCoinDisplays"), /swarmfall-stats/);
 });
 
 test("loot collection persists the run once after its batch", () => {
