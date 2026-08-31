@@ -16,7 +16,11 @@
     "purchaseCharacter",
     "completeMap",
   ]);
-  const TERMINAL_CODES = new Set(["INVALID_PROGRESSION", "INSUFFICIENT_COINS"]);
+  const TERMINAL_CODES = new Set([
+    "INVALID_PROGRESSION",
+    "INSUFFICIENT_COINS",
+    "UNTRUSTED_PROGRESSION",
+  ]);
   const AUTH_CODES = new Set(["SESSION_EXPIRED", "NOT_AUTHENTICATED"]);
 
   function keyForAccount(accountId, prefix = DEFAULT_KEY) {
@@ -133,7 +137,7 @@
               candidate.active.push(candidate.backlog.shift());
             commit(candidate);
             conflictRetries = 0;
-            options.onSuccess?.();
+            options.onSuccess?.(operation, result);
           } catch (error) {
             const policy = errorPolicy(error);
             if (policy === "conflict" && error.progress) {
