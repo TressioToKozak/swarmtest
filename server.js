@@ -14,6 +14,8 @@ const http = require("http"),
     hashPassword,
     passwordMatches,
     cleanProgress,
+    accountProgress,
+    trustedPurchasedCharacters,
     mergeClientProgress,
   } = require("./account-store");
 const PORT = Number(process.env.PORT) || 8080,
@@ -61,6 +63,7 @@ const publicFiles = new Set([
   "multiplayer-client-utils.js",
   "multiplayer.js",
   "multiplayer-visual-state.js",
+  "multiplayer-startup.js",
   "multiplayer-game.js",
 ]);
 const assetsRoot = path.resolve(__dirname, "assets");
@@ -209,22 +212,11 @@ function multiplayerDifficultyScale(playerCount) {
     },
   ][Math.max(0, Math.min(3, (playerCount || 1) - 1))];
 }
-function parseProgressList(progress, key) {
-  try {
-    const value = JSON.parse(progress?.[key] || "[]");
-    return Array.isArray(value) ? value : [];
-  } catch {
-    return [];
-  }
-}
-function accountEntitlements(progress) {
-  const unlocked = parseProgressList(progress, "swarmfall-unlocked");
+function accountEntitlements(account) {
+  const purchased = trustedPurchasedCharacters(account?.purchasedCharacters);
   return {
-    unlocked: [
-      "scout",
-      ...unlocked.filter((value) => ["warrior", "druid"].includes(value)),
-    ],
-    maps: ["ruins", "toxic"],
+    unlocked: ["scout", ...purchased.filter((value) => ["warrior", "druid"].includes(value))],
+    maps: ["ruins"],
   };
 }
 function isEnemyActive(enemy, now) {
@@ -573,6 +565,7 @@ class GameServer {
         accountUserId: identity.id || null,
         accountLogin: identity.login || null,
         accountProgress: identity.progress || null,
+        purchasedCharacters: trustedPurchasedCharacters(identity.purchasedCharacters),
         connectionGeneration: 0,
         state: "pending",
         send,
@@ -592,27 +585,45 @@ class GameServer {
     const session = this.sessionsByPlayerId.get(playerId);
     return session ? this.connectionsById.get(session.connectionId) : null;
   }
-  applyAccountEntitlements(accountUserId, progress) {
-    const entitlements = accountEntitlements(progress);
+  applyAccountEntitlements(accountUserId, account) {
+    const entitlements = accountEntitlements(account);
     for (const connection of this.connectionsById.values()) {
       if (connection.accountUserId !== accountUserId || connection.state !== "authenticated")
         continue;
-      connection.accountProgress = progress;
+      connection.accountProgress = account.progress;
+      connection.purchasedCharacters = trustedPurchasedCharacters(account.purchasedCharacters);
       connection.unlocked = entitlements.unlocked;
       connection.maps = entitlements.maps;
+      const lobby = connection.lobby && this.lobbies.get(connection.lobby),
+        member = lobby?.players.find((player) => player.id === connection.playerId);
+      let changed = false;
+      if (member && !connection.unlocked.includes(member.character)) {
+        member.character = "scout";
+        changed = true;
+      }
+      if (member?.host && lobby && !connection.maps.includes(lobby.map)) {
+        lobby.map = "ruins";
+        changed = true;
+      }
       this.emit(connection, "entitlementState", entitlements);
+      if (changed && !lobby.game) this.publish(lobby);
     }
     return entitlements;
   }
   async refreshEntitlements(connection) {
     if (!connection.accountUserId || !this.accountStore || !this.isCurrentConnection(connection))
       return;
-    const progress = await this.accountStore.read((data) => {
+    const account = await this.accountStore.read((data) => {
       const user = data.users.find((candidate) => candidate.id === connection.accountUserId);
-      return user ? cleanProgress(user.progress) : null;
+      return user
+        ? {
+            progress: accountProgress(user),
+            purchasedCharacters: trustedPurchasedCharacters(user.purchasedCharacters),
+          }
+        : null;
     });
-    if (progress && this.isCurrentConnection(connection))
-      this.applyAccountEntitlements(connection.accountUserId, progress);
+    if (account && this.isCurrentConnection(connection))
+      this.applyAccountEntitlements(connection.accountUserId, account);
   }
   isCurrentConnection(connection) {
     const session =
@@ -811,7 +822,7 @@ class GameServer {
     connection.state = "authenticated";
     const entitlements =
       connection.accountUserId && connection.accountProgress
-        ? accountEntitlements(connection.accountProgress)
+        ? accountEntitlements(connection)
         : { unlocked: ["scout"], maps: ["ruins"] };
     connection.unlocked = entitlements.unlocked;
     connection.maps = entitlements.maps;
@@ -1207,7 +1218,17 @@ class GameServer {
       return this.publish(lobby);
     }
   }
+  normalizeLobbyEntitlements(lobby) {
+    const host = lobby.players.find((member) => member.host),
+      hostConnection = host && this.currentConnection(host.id);
+    if (!hostConnection?.maps.includes(lobby.map)) lobby.map = "ruins";
+    for (const member of lobby.players) {
+      const connection = this.currentConnection(member.id);
+      if (!connection?.unlocked.includes(member.character)) member.character = "scout";
+    }
+  }
   prepare(lobby) {
+    this.normalizeLobbyEntitlements(lobby);
     const matchId = crypto.randomUUID();
     lobby.preparing = {
       matchId,
@@ -3543,7 +3564,7 @@ function createStaticHandler({
               };
               return {
                 user: { id: user.id, login: user.login, email: user.email },
-                progress: cleanProgress(user.progress),
+                progress: accountProgress(user),
                 revision: user.revision || 0,
               };
             });
@@ -3579,7 +3600,7 @@ function createStaticHandler({
             const user = data.users.find((u) => u.id === auth.user.id);
             return {
               user: { id: user.id, login: user.login, email: user.email },
-              progress: cleanProgress(user.progress),
+              progress: accountProgress(user),
               revision: user.revision || 0,
             };
           });
@@ -3614,7 +3635,7 @@ function createStaticHandler({
               const error = new Error();
               error.code = "REVISION_CONFLICT";
               error.revision = revision;
-              error.progress = cleanProgress(user.progress);
+              error.progress = accountProgress(user);
               throw error;
             }
             user.progress = mergeClientProgress(user.progress, body.progress);
@@ -3624,7 +3645,7 @@ function createStaticHandler({
             return {
               saved: true,
               revision: user.revision,
-              progress: cleanProgress(user.progress),
+              progress: accountProgress(user),
               updatedAt: user.progressUpdatedAt,
             };
           });
@@ -3644,7 +3665,7 @@ function createStaticHandler({
             body.expectedRevision,
             body.operation,
           );
-          onAccountProgress(auth.user.id, result.progress);
+          onAccountProgress(auth.user.id, { progress: result.progress, purchasedCharacters: result.purchasedCharacters });
           return jsonResponse(res, 200, result);
         }
         if (req.method === "POST" && pathname === "/api/account/logout") {
@@ -3748,8 +3769,8 @@ function createHttpServer(core = new GameServer(), options = {}) {
       accountFile,
       accountStore,
       trustProxy,
-      onAccountProgress: (accountUserId, progress) =>
-        core.applyAccountEntitlements(accountUserId, progress),
+      onAccountProgress: (accountUserId, account) =>
+        core.applyAccountEntitlements(accountUserId, account),
     }),
   );
   const { WebSocketServer } = require("ws");

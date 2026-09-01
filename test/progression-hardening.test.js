@@ -61,9 +61,13 @@ test("validated single-player achievement, map and purchase operations are monot
   );
   assert.ok(JSON.parse(progress["swarmfall-achievements-v1"]).includes("map_1"));
   assert.ok(JSON.parse(progress["swarmfall-modes"]).includes("normal"));
-  assert.deepEqual(accountEntitlements(progress), {
+  assert.deepEqual(accountEntitlements({ progress }), {
+    unlocked: ["scout"],
+    maps: ["ruins"],
+  });
+  assert.deepEqual(accountEntitlements({ purchasedCharacters: ["warrior"] }), {
     unlocked: ["scout", "warrior"],
-    maps: ["ruins", "toxic"],
+    maps: ["ruins"],
   });
 });
 
@@ -122,6 +126,8 @@ test("single-player operations are revision-safe and idempotent", async (t) => {
   );
   assert.equal(duplicate.duplicate, true);
   assert.equal(duplicate.revision, 1);
+  const stored = await store.read((data) => structuredClone(data.users[0]));
+  assert.deepEqual(stored.purchasedCharacters, ["warrior"]);
   await assert.rejects(
     store.applySingleplayerOperation(
       "u",

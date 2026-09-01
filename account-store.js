@@ -147,6 +147,22 @@ function parseList(raw, allowed) {
   } catch {}
   return [...new Set(Array.isArray(parsed) ? parsed.filter((value) => allowed.has(value)) : [])];
 }
+function trustedPurchasedCharacters(value) {
+  return [
+    ...new Set(
+      Array.isArray(value)
+        ? value.filter((character) => Object.hasOwn(CHARACTER_COSTS, character))
+        : [],
+    ),
+  ];
+}
+function accountProgress(user) {
+  const progress = cleanProgress(user?.progress),
+    purchased = trustedPurchasedCharacters(user?.purchasedCharacters);
+  if (purchased.length) progress["swarmfall-unlocked"] = JSON.stringify(purchased);
+  else delete progress["swarmfall-unlocked"];
+  return progress;
+}
 function writeStats(progress, stats) {
   progress["swarmfall-stats"] = JSON.stringify(stats);
 }
@@ -285,6 +301,7 @@ class AccountStore {
       this.data = parsed;
       for (const user of this.data.users) {
         user.progress = cleanProgress(user.progress);
+        user.purchasedCharacters = trustedPurchasedCharacters(user.purchasedCharacters);
         user.revision =
           Number.isSafeInteger(user.revision) && user.revision >= 0 ? user.revision : 0;
       }
@@ -348,7 +365,8 @@ class AccountStore {
         ? {
             id: user.id,
             login: user.login,
-            progress: cleanProgress(user.progress),
+            progress: accountProgress(user),
+            purchasedCharacters: trustedPurchasedCharacters(user.purchasedCharacters),
           }
         : null;
     });
@@ -366,17 +384,23 @@ class AccountStore {
           saved: true,
           duplicate: true,
           revision,
-          progress: cleanProgress(user.progress),
+          progress: accountProgress(user),
+          purchasedCharacters: trustedPurchasedCharacters(user.purchasedCharacters),
         };
       if (!CLIENT_PROGRESS_OPERATION_TYPES.has(operation?.type))
         throw progressionError("UNTRUSTED_PROGRESSION");
       if (expectedRevision !== revision) {
         const error = progressionError("REVISION_CONFLICT");
         error.revision = revision;
-        error.progress = cleanProgress(user.progress);
+        error.progress = accountProgress(user);
         throw error;
       }
+      user.progress = accountProgress(user);
       user.progress = applyProgressOperation(user.progress, operation);
+      user.purchasedCharacters = parseList(
+        user.progress["swarmfall-unlocked"],
+        new Set(Object.keys(CHARACTER_COSTS)),
+      );
       user.appliedOperations.push(id);
       user.appliedOperations = user.appliedOperations.slice(-2000);
       user.revision = revision + 1;
@@ -384,7 +408,8 @@ class AccountStore {
       return {
         saved: true,
         revision: user.revision,
-        progress: cleanProgress(user.progress),
+        progress: accountProgress(user),
+        purchasedCharacters: trustedPurchasedCharacters(user.purchasedCharacters),
       };
     });
   }
@@ -412,7 +437,7 @@ class AccountStore {
       return {
         applied: true,
         revision: user.revision,
-        progress: user.progress,
+        progress: accountProgress(user),
       };
     });
   }
@@ -429,6 +454,8 @@ module.exports = {
   hashPassword,
   passwordMatches,
   cleanProgress,
+  accountProgress,
+  trustedPurchasedCharacters,
   mergeClientProgress,
   applyProgressOperation,
   CLIENT_PROGRESS_OPERATION_TYPES,
