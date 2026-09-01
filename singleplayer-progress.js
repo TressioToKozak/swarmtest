@@ -1,0 +1,17 @@
+(function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.SwarmSingleplayerProgress=api})(typeof globalThis!=='undefined'?globalThis:this,()=>{
+  'use strict';
+  const ACTIVE_ACCOUNT_KEY='swarmfall-account-user-id',PREFIX='swarmfall-sp';
+  function accountId(session){const value=session?.getItem?.(ACTIVE_ACCOUNT_KEY);return typeof value==='string'&&value.length>0&&value.length<=80?value:null}
+  function scope(session){return accountId(session)?`account:${accountId(session)}`:'guest'}
+  function key(base,session=globalThis.sessionStorage){return `${PREFIX}:${scope(session)}:${base}`}
+  function readJson(storage,keyName,fallback){const raw=storage.getItem(keyName);try{return JSON.parse(raw??'null')??fallback}catch{return raw??fallback}}
+  function migrate(storage,session,base,legacyKeys,normalize,merge){const target=key(base,session),marker=`${target}:migrated-v1`;if(storage.getItem(marker)==='1')return target;const hasCurrent=storage.getItem(target)!==null;let current=normalize(readJson(storage,target,null)),next=current;const id=accountId(session),claim=`${PREFIX}:legacy-owner:${base}`,owner=storage.getItem(claim);if(id&&(!owner||owner===id)){for(const legacyKey of legacyKeys)next=merge(next,normalize(readJson(storage,legacyKey,null)),hasCurrent);try{storage.setItem(target,JSON.stringify(next));storage.setItem(claim,id)}catch{return target}}else if(!hasCurrent)try{storage.setItem(target,JSON.stringify(next))}catch{return target}try{storage.setItem(marker,'1')}catch{}return target}
+  function array(storage,session,base,legacyKeys,allowed){const normalize=value=>Array.isArray(value)?[...new Set(value.filter(item=>typeof item==='string'&&allowed.has(item)))]:[],target=migrate(storage,session,base,legacyKeys,normalize,(a,b)=>normalize([...a,...b]));return{key:target,value:normalize(readJson(storage,target,[]))}}
+  function object(storage,session,base,legacyKeys,normalize){const target=migrate(storage,session,base,legacyKeys,normalize,(a,b,hasCurrent)=>hasCurrent?a:b);return{key:target,value:normalize(readJson(storage,target,{}))}}
+  function string(storage,session,base,legacyKeys,allowed){const normalize=value=>typeof value==='string'&&allowed.has(value)?value:'',target=migrate(storage,session,base,legacyKeys,normalize,(a,b,hasCurrent)=>hasCurrent?a:b);return{key:target,value:normalize(readJson(storage,target,''))}}
+  function modeUnlocked(mode,completed){return mode==='normal'||mode==='hard'&&completed.has('normal')||mode==='nightmare'&&completed.has('hard')||mode==='endless'&&completed.has('normal')}
+  function sanitizeSelection(selection,{unlocked,completed,toxicUnlocked}){const character=['scout','warrior','druid'].includes(selection.character)&&unlocked.has(selection.character)?selection.character:'scout',mode=modeUnlocked(selection.mode,completed)?selection.mode:'normal',map=selection.map==='toxic'&&toxicUnlocked?'toxic':'ruins';return{character,map,mode}}
+  function canResume(state,access){if(!state)return false;const selected=sanitizeSelection({character:state.chosenCharacter,map:state.chosenMap,mode:state.chosenMode||'normal'},access);return selected.character===state.chosenCharacter&&selected.map===state.chosenMap&&selected.mode===(state.chosenMode||'normal')}
+  function createIntentGuard(){let generation=0;return{begin:()=>++generation,isCurrent:value=>value===generation,current:()=>generation}}
+  return{ACTIVE_ACCOUNT_KEY,accountId,scope,key,array,object,string,modeUnlocked,sanitizeSelection,canResume,createIntentGuard};
+});

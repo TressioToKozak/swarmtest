@@ -61,9 +61,13 @@ test("validated single-player achievement, map and purchase operations are monot
   );
   assert.ok(JSON.parse(progress["swarmfall-achievements-v1"]).includes("map_1"));
   assert.ok(JSON.parse(progress["swarmfall-modes"]).includes("normal"));
-  assert.deepEqual(accountEntitlements(progress), {
+  assert.deepEqual(accountEntitlements({ progress }), {
+    unlocked: ["scout"],
+    maps: ["ruins"],
+  });
+  assert.deepEqual(accountEntitlements({ purchasedCharacters: ["warrior"] }), {
     unlocked: ["scout", "warrior"],
-    maps: ["ruins", "toxic"],
+    maps: ["ruins"],
   });
 });
 
@@ -122,21 +126,31 @@ test("single-player operations are revision-safe and idempotent", async (t) => {
   );
   assert.equal(duplicate.duplicate, true);
   assert.equal(duplicate.revision, 1);
+  const stored = await store.read((data) => structuredClone(data.users[0]));
+  assert.deepEqual(stored.purchasedCharacters, ["warrior"]);
   await assert.rejects(
     store.applySingleplayerOperation(
       "u",
       0,
       operation("achievement-boss", "unlockAchievement", { id: "boss_1" }),
     ),
-    (error) => error.code === "REVISION_CONFLICT" && error.revision === 1,
+    (error) => error.code === "UNTRUSTED_PROGRESSION",
   );
-  const second = await store.applySingleplayerOperation(
-    "u",
-    1,
-    operation("achievement-boss", "unlockAchievement", { id: "boss_1" }),
+  await assert.rejects(
+    store.applySingleplayerOperation(
+      "u",
+      1,
+      operation("forged-result", "awardSingleplayerResult", {
+        time: 600,
+        kills: 500,
+        character: "warrior",
+      }),
+    ),
+    (error) => error.code === "UNTRUSTED_PROGRESSION",
   );
-  assert.equal(second.revision, 2);
-  assert.equal(stats(second.progress).coins, 5);
+  const current = await store.read((data) => data.users[0]);
+  assert.equal(current.revision, 1);
+  assert.equal(stats(current.progress).coins, 0);
 });
 
 test("sliding limiter prunes expired unique keys while retaining active limits", () => {
@@ -277,10 +291,12 @@ test("active WebSocket connection limiter releases slots and isolates proxy-deri
   assert.equal(limiter.counts.has("ip-a"), false);
 });
 
-test("map completion achievements are not posted as rejected standalone operations", () => {
-  const source = fs.readFileSync(path.join(__dirname, "..", "game.js"), "utf8");
-  assert.match(source, /\['map_1','hard_clear','nightmare_clear'\]\.includes\(id\)/);
-  assert.match(source, /accountProgress\('completeMap'/);
+test("map completion and achievements remain local-only and never enter account progression", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "game.js"), "utf8"),
+    achievements = fs.readFileSync(path.join(__dirname, "..", "achievements.js"), "utf8");
+  assert.doesNotMatch(source, /accountProgress\('(completeMap|unlockAchievement)'/);
+  assert.match(source, /swarmfall-singleplayer-modes/);
+  assert.match(achievements, /swarmfall-singleplayer-achievements-v1/);
 });
 
 test("WebSocket transport enforces per-IP capacity and releases a disconnected slot", async (t) => {
