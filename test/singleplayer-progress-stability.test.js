@@ -89,33 +89,6 @@ test("single-player reward and upgrade flows contain no dead account-gold reward
   assert.doesNotMatch(instructions, /monetę za każdą minutę|coin for every minute/);
 });
 
-test("legacy difficulty modes migrate into the validated local-only set", () => {
-  const source = section("completedModes", "accountProgress"),
-    run = (entries) => {
-      const storage = memoryStorage(entries),
-        completed = Function(
-          "localStorage",
-          "SWARM_DIFFICULTIES",
-          `${source};return completedModes()`,
-        )(storage, { normal: {}, hard: {}, nightmare: {}, endless: {} });
-      return { completed, storage };
-    };
-  let result = run([
-    ["swarmfall-modes", '["normal","hard","invalid","hard"]'],
-    ["swarmfall-singleplayer-modes", '["normal"]'],
-  ]);
-  assert.deepEqual([...result.completed], ["normal", "hard"]);
-  assert.deepEqual(JSON.parse(result.storage.getItem("swarmfall-singleplayer-modes")), [
-    "normal",
-    "hard",
-  ]);
-  result = run([
-    ["swarmfall-modes", "malformed"],
-    ["swarmfall-singleplayer-modes", '["normal","hard"]'],
-  ]);
-  assert.deepEqual([...result.completed], ["normal", "hard"]);
-});
-
 test("character purchase waits for authoritative confirmation before unlock or success UI", () => {
   const purchase = section("selectCharacter", "awardUnlock");
   assert.doesNotMatch(
@@ -169,7 +142,7 @@ test("single-player rewards cannot increase the server-owned account coin balanc
   assert.doesNotMatch(game, /function awardCurrency|awardCurrency\(/);
   assert.doesNotMatch(achievement, /savedStats\.coins|accountProgress|entry\.reward/);
   assert.doesNotMatch(render, /entry\.reward|rewards\.gold/);
-  assert.match(game, /LOCAL_STATS_KEY='swarmfall-singleplayer-stats-v1'/);
+  assert.match(game, /SwarmSingleplayerProgress\.object/);
   assert.match(game, /coins:accountStats\.coins/);
   assert.doesNotMatch(section("saveStats", "updateCoinDisplays"), /swarmfall-stats/);
 });

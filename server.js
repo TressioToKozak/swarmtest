@@ -37,6 +37,7 @@ const publicFiles = new Set([
   "i18n.js",
   "progress-outbox.js",
   "account-client.js",
+  "singleplayer-progress.js",
   "game.js",
   "enemy-data.js",
   "map-data.js",
@@ -81,6 +82,7 @@ const allowedMessages = new Set([
   "leaveLobby",
   "selectMap",
   "selectCharacter",
+  "refreshEntitlements",
   "playerReady",
   "startGame",
   "assetsReady",
@@ -100,6 +102,7 @@ const limits = {
   leaveLobby: 500,
   selectMap: 250,
   selectCharacter: 250,
+  refreshEntitlements: 500,
   playerReady: 200,
   startGame: 500,
   assetsReady: 300,
@@ -215,14 +218,13 @@ function parseProgressList(progress, key) {
   }
 }
 function accountEntitlements(progress) {
-  const unlocked = parseProgressList(progress, "swarmfall-unlocked"),
-    achievements = parseProgressList(progress, "swarmfall-achievements-v1");
+  const unlocked = parseProgressList(progress, "swarmfall-unlocked");
   return {
     unlocked: [
       "scout",
       ...unlocked.filter((value) => ["warrior", "druid"].includes(value)),
     ],
-    maps: ["ruins", ...(achievements.includes("map_1") ? ["toxic"] : [])],
+    maps: ["ruins", "toxic"],
   };
 }
 function isEnemyActive(enemy, now) {
@@ -590,6 +592,28 @@ class GameServer {
     const session = this.sessionsByPlayerId.get(playerId);
     return session ? this.connectionsById.get(session.connectionId) : null;
   }
+  applyAccountEntitlements(accountUserId, progress) {
+    const entitlements = accountEntitlements(progress);
+    for (const connection of this.connectionsById.values()) {
+      if (connection.accountUserId !== accountUserId || connection.state !== "authenticated")
+        continue;
+      connection.accountProgress = progress;
+      connection.unlocked = entitlements.unlocked;
+      connection.maps = entitlements.maps;
+      this.emit(connection, "entitlementState", entitlements);
+    }
+    return entitlements;
+  }
+  async refreshEntitlements(connection) {
+    if (!connection.accountUserId || !this.accountStore || !this.isCurrentConnection(connection))
+      return;
+    const progress = await this.accountStore.read((data) => {
+      const user = data.users.find((candidate) => candidate.id === connection.accountUserId);
+      return user ? cleanProgress(user.progress) : null;
+    });
+    if (progress && this.isCurrentConnection(connection))
+      this.applyAccountEntitlements(connection.accountUserId, progress);
+  }
   isCurrentConnection(connection) {
     const session =
       connection?.playerId && this.sessionsByPlayerId.get(connection.playerId);
@@ -788,13 +812,7 @@ class GameServer {
     const entitlements =
       connection.accountUserId && connection.accountProgress
         ? accountEntitlements(connection.accountProgress)
-        : {
-            unlocked: [
-              "scout",
-              ...msg.unlocked.filter((x) => ["warrior", "druid"].includes(x)),
-            ],
-            maps: ["ruins", ...(msg.maps?.includes("toxic") ? ["toxic"] : [])],
-          };
+        : { unlocked: ["scout"], maps: ["ruins"] };
     connection.unlocked = entitlements.unlocked;
     connection.maps = entitlements.maps;
     if (old && old !== connection) {
@@ -830,6 +848,7 @@ class GameServer {
       lastProcessedInputSeq: player?.lastProcessedInputSeq || 0,
       lastAbilityInputSeq: player?.lastAbilityInputSeq || 0,
       resume,
+      entitlements,
     });
     if (connection.lobby) {
       const found = this.lobbies.get(connection.lobby),
@@ -898,6 +917,12 @@ class GameServer {
         message: "Połączenie nie ma aktualnego ownership gracza.",
       });
     if (msg.type === "hello") return this.authenticate(client, msg);
+    if (msg.type === "refreshEntitlements") {
+      void this.refreshEntitlements(client).catch(() =>
+        this.emit(client, "error", { message: "Nie udało się odświeżyć uprawnień." }),
+      );
+      return;
+    }
     if (msg.type === "ping")
       return this.emit(client, "pong", {
         id: msg.id,
@@ -3399,6 +3424,7 @@ function createStaticHandler({
   trustProxy = trustedProxy(),
   limiter = new SlidingWindowLimiter(),
   mutationLimiter = new SlidingWindowLimiter({ limit: 180, windowMs: 60000 }),
+  onAccountProgress = () => {},
 } = {}) {
   const limited = (req) => limiter.take(clientIp(req, trustProxy) || "unknown");
   return async (req, res) => {
@@ -3618,6 +3644,7 @@ function createStaticHandler({
             body.expectedRevision,
             body.operation,
           );
+          onAccountProgress(auth.user.id, result.progress);
           return jsonResponse(res, 200, result);
         }
         if (req.method === "POST" && pathname === "/api/account/logout") {
@@ -3717,7 +3744,13 @@ function createHttpServer(core = new GameServer(), options = {}) {
   } = options;
   if (!core.accountStore) core.accountStore = accountStore;
   const server = http.createServer(
-    createStaticHandler({ accountFile, accountStore, trustProxy }),
+    createStaticHandler({
+      accountFile,
+      accountStore,
+      trustProxy,
+      onAccountProgress: (accountUserId, progress) =>
+        core.applyAccountEntitlements(accountUserId, progress),
+    }),
   );
   const { WebSocketServer } = require("ws");
   const activeConnections = new ActiveConnectionLimiter(
