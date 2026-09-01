@@ -4,8 +4,7 @@
 .minimap-wrap{position:absolute;right:3vw;top:92px;width:220px;padding:9px;background:linear-gradient(145deg,rgba(10,18,33,.92),rgba(6,10,22,.78));border:1px solid rgba(81,246,223,.23);box-shadow:0 12px 35px rgba(0,0,0,.35),inset 0 0 20px rgba(81,246,223,.035);clip-path:polygon(9px 0,100% 0,100% calc(100% - 9px),calc(100% - 9px) 100%,0 100%,0 9px)}
 .minimap-heading{display:flex;justify-content:space-between;margin:0 2px 7px;font:700 8px "Chakra Petch";letter-spacing:1.4px;color:#8190a8}.minimap-heading span{color:var(--cyan)}
 #minimap{display:block;width:200px;height:136px;background:#070d18;border:1px solid rgba(110,158,185,.2)}
-.minimap-coords{text-align:right;color:#68758d;font:600 8px "Chakra Petch";letter-spacing:1px;margin:6px 2px 0}
-@media(max-width:700px){.minimap-wrap{right:2vw;top:74px;width:148px;padding:6px}#minimap{width:134px;height:91px}.minimap-heading b{display:none}.minimap-coords{display:none}}
+@media(max-width:700px){.minimap-wrap{right:2vw;top:74px;width:148px;padding:6px}#minimap{width:134px;height:91px}.minimap-heading b{display:none}}
 
 /* Reworked mission menu */
 .menu-frame,.instruction-panel{position:relative;width:min(760px,92vw);padding:52px 62px;text-align:center;background:linear-gradient(145deg,rgba(12,19,36,.94),rgba(5,9,20,.96));border:1px solid rgba(81,246,223,.2);box-shadow:0 30px 90px #000,0 0 80px rgba(57,183,190,.08);clip-path:polygon(22px 0,calc(100% - 22px) 0,100% 22px,100% calc(100% - 22px),calc(100% - 22px) 100%,22px 100%,0 calc(100% - 22px),0 22px)}
